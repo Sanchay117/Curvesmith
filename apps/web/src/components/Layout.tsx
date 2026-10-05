@@ -1,5 +1,5 @@
-import { ReactNode, useEffect, useState } from 'react'
-import { NavLink, Link } from 'react-router-dom'
+import { ReactNode, useCallback, useEffect, useRef, useState } from 'react'
+import { NavLink, Link, useLocation } from 'react-router-dom'
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { useNetwork } from '../lib/network'
@@ -37,7 +37,7 @@ function Logo() {
                 <path d="M6 25 C 12 24, 15 20, 17 14 S 22 7, 26 7" fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" />
                 <circle cx="26" cy="7" r="2.6" fill="var(--s4)" />
             </svg>
-            <span className="text-[17px] font-semibold tracking-tight">Curvesmith</span>
+            <span className="hidden text-[17px] font-semibold tracking-tight sm:inline">Curvesmith</span>
         </Link>
     )
 }
@@ -127,11 +127,34 @@ function Settings({ onClose }: { onClose: () => void }) {
     )
 }
 
+/** Closes a popover on outside click, Escape, or navigation. */
+function useDismiss(open: boolean, close: () => void) {
+    const ref = useRef<HTMLDivElement>(null)
+    const location = useLocation()
+    useEffect(() => {
+        if (!open) return
+        const onDown = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) close()
+        }
+        const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close()
+        document.addEventListener('mousedown', onDown)
+        document.addEventListener('keydown', onKey)
+        return () => {
+            document.removeEventListener('mousedown', onDown)
+            document.removeEventListener('keydown', onKey)
+        }
+    }, [open, close])
+    useEffect(() => close(), [location.pathname]) // eslint-disable-line react-hooks/exhaustive-deps
+    return ref
+}
+
 export function Layout({ children }: { children: ReactNode }) {
     const [theme, setTheme] = useTheme()
     const { network } = useNetwork()
     const [open, setOpen] = useState(false)
     const [menu, setMenu] = useState(false)
+    const closeSettings = useCallback(() => setOpen(false), [])
+    const settingsRef = useDismiss(open, closeSettings)
     const nav = [
         { to: '/', label: 'Marketplace' },
         { to: '/studio', label: 'Studio' },
@@ -141,7 +164,7 @@ export function Layout({ children }: { children: ReactNode }) {
     return (
         <div className="min-h-screen">
             <header className="sticky top-0 z-30 border-b border-line bg-page/85 backdrop-blur">
-                <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-6 px-4 sm:px-6">
+                <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-3 px-4 sm:gap-6 sm:px-6">
                     <Logo />
                     <nav className="hidden items-center gap-1 md:flex">
                         {nav.map((n) => (
@@ -157,14 +180,15 @@ export function Layout({ children }: { children: ReactNode }) {
                             </NavLink>
                         ))}
                     </nav>
-                    <div className="ml-auto flex items-center gap-2">
-                        <div className="relative">
+                    <div className="ml-auto flex min-w-0 items-center gap-1.5 sm:gap-2">
+                        <div className="relative" ref={settingsRef}>
                             <button
+                                aria-expanded={open}
                                 onClick={() => setOpen((o) => !o)}
                                 className="flex h-9 items-center gap-2 rounded-[10px] border border-line-strong bg-surface-2 px-3 text-[13px] font-medium"
                             >
                                 <span className="size-2 rounded-full" style={{ background: network === 'devnet' ? 'var(--s4)' : 'var(--good)' }} />
-                                {network === 'devnet' ? 'Devnet' : 'Mainnet'}
+                                <span className="hidden sm:inline">{network === 'devnet' ? 'Devnet' : 'Mainnet'}</span>
                             </button>
                             {open && <Settings onClose={() => setOpen(false)} />}
                         </div>

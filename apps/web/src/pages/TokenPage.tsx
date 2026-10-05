@@ -330,7 +330,7 @@ export function TokenPage() {
                 </div>
             </div>
 
-            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
                 <div className="min-w-0 space-y-5">
                     <Card>
                         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">

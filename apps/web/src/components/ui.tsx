@@ -107,7 +107,8 @@ export function NumberInput({
                 type="number"
                 inputMode="decimal"
                 className={cx(inputCls, 'tnum pr-14')}
-                value={draft ?? String(value)}
+                // show at most 6 significant digits; the full-precision value stays in state
+                value={draft ?? String(Number.isFinite(value) ? Number(value.toPrecision(6)) : value)}
                 min={min}
                 max={max}
                 step={step ?? 'any'}

@@ -73,6 +73,23 @@ export function Studio() {
         return loadDraft() ?? clonePreset(LIBRARY['fair-meme'])
     })
 
+    // Links like /studio?template=x must work while the Studio is already open (React Router
+    // keeps the component mounted across search-param changes, so the initializer won't rerun).
+    const templateParam = params.get('template')
+    const shareParam = params.get('s')
+    const lastParams = useRef(`${templateParam}|${shareParam}`)
+    useEffect(() => {
+        const key = `${templateParam}|${shareParam}`
+        if (key === lastParams.current) return
+        lastParams.current = key
+        if (shareParam) {
+            const decoded = decodeSpec(shareParam)
+            if (decoded) setSpec(decoded)
+        } else if (templateParam && LIBRARY[templateParam]) {
+            setSpec(clonePreset(LIBRARY[templateParam]))
+        }
+    }, [templateParam, shareParam])
+
     // fork from an on-chain preset once listings arrive
     const forkedFrom = params.get('fork')
     const forked = useRef(false)
@@ -196,7 +213,7 @@ export function Studio() {
                 </div>
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-[380px_minmax(0,1fr)]">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[380px_minmax(0,1fr)]">
                 <aside className="rounded-2xl border border-line bg-surface px-4 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto">
                     <Controls spec={spec} set={set} onTargetRaise={onTargetRaise} raise={a?.analysis.raise ?? null} />
                 </aside>
@@ -256,7 +273,7 @@ export function Studio() {
                                     <Panel title="Price path" hint={`${a.analysis.segments}-segment DBC curve compiled from the ${spec.pricing.shape.kind.replace('-', ' ')} shape; graduation at ${Math.round(resolveEndMcap(spec)).toLocaleString()} ${spec.quote} market cap.`}>
                                         <CurveChart a={a} compare={compare} />
                                     </Panel>
-                                    <div className="grid gap-5 xl:grid-cols-2">
+                                    <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
                                         <Panel title="Where the supply goes">
                                             <SupplyBar a={a} />
                                         </Panel>

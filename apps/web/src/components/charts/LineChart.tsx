@@ -96,16 +96,22 @@ function valueAt(s: Series, x: number): { x: number; y: number } | null {
 }
 
 export function LineChart({ series, height = 260, xFormat, yFormat, xTooltip, xLabel, yLog, yMin, markers = [], dots = [], empty }: Props) {
-    const wrap = useRef<HTMLDivElement>(null)
+    // A callback ref (not useRef) so the observer re-attaches if the container element is
+    // replaced, e.g. when the chart goes from its empty state to having data.
+    const [wrapEl, setWrapEl] = useState<HTMLDivElement | null>(null)
+    const wrap = useRef<HTMLDivElement | null>(null)
+    wrap.current = wrapEl
     const [width, setWidth] = useState(600)
     const [hoverX, setHoverX] = useState<number | null>(null)
 
     useEffect(() => {
-        if (!wrap.current) return
-        const ro = new ResizeObserver((entries) => setWidth(Math.max(240, entries[0].contentRect.width)))
-        ro.observe(wrap.current)
+        if (!wrapEl) return
+        const measure = (w: number) => w > 0 && setWidth(Math.max(240, Math.round(w)))
+        measure(wrapEl.getBoundingClientRect().width)
+        const ro = new ResizeObserver((entries) => measure(entries[0].contentRect.width))
+        ro.observe(wrapEl)
         return () => ro.disconnect()
-    }, [])
+    }, [wrapEl])
 
     const all = series.flatMap((s) => s.points)
     const geom = useMemo(() => {
@@ -137,7 +143,7 @@ export function LineChart({ series, height = 260, xFormat, yFormat, xTooltip, xL
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [series, width, height, yLog, yMin, markers])
 
-    if (!geom) return <div ref={wrap} style={{ height }} className="grid place-items-center text-sm text-muted">{empty ?? 'No data'}</div>
+    if (!geom) return <div ref={setWrapEl} style={{ height }} className="grid place-items-center text-sm text-muted">{empty ?? 'No data'}</div>
 
     const { sx, sy, iw, ih, invX, yTicks, xTicks } = geom
     const pathOf = (s: Series) => {
@@ -185,10 +191,12 @@ export function LineChart({ series, height = 260, xFormat, yFormat, xTooltip, xL
                     ))}
                 </div>
             )}
-            <div ref={wrap} className="relative select-none" style={{ height }}>
+            <div ref={setWrapEl} className="relative w-full min-w-0 select-none overflow-hidden" style={{ height }}>
                 <svg
-                    width={width}
+                    width="100%"
                     height={height}
+                    viewBox={`0 0 ${width} ${height}`}
+                    preserveAspectRatio="none"
                     role="img"
                     tabIndex={0}
                     aria-label={series.map((s) => s.label).join(', ')}

@@ -33,6 +33,19 @@ export function dbcClient(connection: Connection, commitment: Commitment = 'conf
     return new DynamicBondingCurveClient(connection, commitment)
 }
 
+/** Retries rate-limited or transient RPC failures with exponential backoff; rethrows anything else. */
+export async function withRetry<T>(fn: () => Promise<T>, attempts = 6, baseMs = 1000): Promise<T> {
+    for (let i = 0; ; i++) {
+        try {
+            return await fn()
+        } catch (e) {
+            const msg = String((e as Error)?.message ?? e)
+            if (i >= attempts - 1 || !/429|too many|timeout|timed out|fetch failed|ECONNRESET|503|502/i.test(msg)) throw e
+            await new Promise((r) => setTimeout(r, baseMs * 2 ** i + Math.random() * 400))
+        }
+    }
+}
+
 /**
  * Adds a priority fee (and optionally a CU limit) unless the SDK already did: the runtime
  * rejects a transaction with two instructions of the same compute-budget type.

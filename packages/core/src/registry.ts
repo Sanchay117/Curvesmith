@@ -148,18 +148,37 @@ function memoOf(tx: ParsedTransactionWithMeta): string | null {
     return null
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+const TX_OPTS = { maxSupportedTransactionVersion: 0, commitment: 'confirmed' } as const
+
+/** One transaction, retried with backoff: a rate-limited RPC must not silently drop a listing. */
+async function fetchOne(connection: Connection, sig: string): Promise<ParsedTransactionWithMeta | null> {
+    for (let attempt = 0; attempt < 5; attempt++) {
+        try {
+            const tx = await connection.getParsedTransaction(sig, TX_OPTS)
+            if (tx) return tx
+        } catch {
+            /* 429 or transient error: back off and retry */
+        }
+        await sleep(400 * 2 ** attempt)
+    }
+    return null
+}
+
 async function fetchParsed(connection: Connection, sigs: string[]): Promise<(ParsedTransactionWithMeta | null)[]> {
     const out: (ParsedTransactionWithMeta | null)[] = []
     for (let i = 0; i < sigs.length; i += 25) {
         const chunk = sigs.slice(i, i + 25)
+        let got: (ParsedTransactionWithMeta | null)[]
         try {
-            out.push(...(await connection.getParsedTransactions(chunk, { maxSupportedTransactionVersion: 0 })))
+            got = await connection.getParsedTransactions(chunk, TX_OPTS)
         } catch {
-            // some RPCs reject JSON-RPC batches; fall back to one request per transaction
-            for (const s of chunk) {
-                out.push(await connection.getParsedTransaction(s, { maxSupportedTransactionVersion: 0 }).catch(() => null))
-            }
+            // the batch failed as a whole (rate limit, or an RPC that rejects batches)
+            got = chunk.map(() => null)
         }
+        // anything missing is fetched on its own, with retries
+        for (let j = 0; j < chunk.length; j++) if (!got[j]) got[j] = await fetchOne(connection, chunk[j])
+        out.push(...got)
     }
     return out
 }

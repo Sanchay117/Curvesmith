@@ -15,6 +15,7 @@
     "test": "pnpm --filter @curvesmith/core test",
     "typecheck": "pnpm -r typecheck",
     "cli": "pnpm --filter @curvesmith/cli exec tsx src/index.ts",
+    "snapshot": "pnpm --filter @curvesmith/cli exec tsx src/index.ts snapshot",
     "mcp": "pnpm --filter @curvesmith/mcp exec tsx src/index.ts"
   }
 }

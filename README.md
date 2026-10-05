@@ -62,7 +62,7 @@ pnpm test        # 40 tests, about 3 seconds, no network needed
 
 ## Devnet deployment
 
-All eight library presets are published and listed on devnet, with demo tokens launched and one taken all the way through graduation into DAMM v2. Addresses are in [`deployments/devnet.json`](deployments/devnet.json).
+Eleven presets are live in the devnet registry: the eight library templates (published with the CLI) and three designed and published entirely in the web Studio, including a hand-drawn freehand curve. Eight tokens have been launched from them, and two have graduated into real DAMM v2 pools: one driven by the CLI, one driven click by click through the web app (publish, launch, buy, sell, buy to graduation, graduate, claim as author, claim as creator from Earnings). Every address is in [`deployments/devnet.json`](deployments/devnet.json).
 
 | | |
 |---|---|
@@ -80,7 +80,19 @@ pnpm dev          # the web app at http://localhost:5173
 pnpm test         # differential and lifecycle tests on the real programs
 ```
 
-Use a wallet set to devnet (Phantom: Settings, Developer settings, Testnet mode). Get devnet SOL from https://faucet.solana.com.
+**Try the whole lifecycle in two minutes, no wallet extension needed:** on devnet the wallet menu offers a **Devnet Burner**, a throwaway in-browser wallet. Fund it from the network menu (Airdrop 1 SOL, or copy its address into https://faucet.solana.com), then open the **Micro Speedrun** preset: its raise is only 0.4 SOL, so one wallet can launch a token, buy it to graduation, crank it into DAMM v2 and claim both author and creator fees. Phantom, Solflare and Backpack work too (Phantom: Settings, Developer settings, Testnet mode).
+
+### Deploying the web app
+
+The app is a static site (`apps/web/dist`) that works from any path. `.github/workflows/pages.yml` tests, builds and deploys it to GitHub Pages on every push to `main` (enable it once under Settings, Pages, Source: GitHub Actions).
+
+Before deploying, refresh the registry snapshot so the marketplace paints instantly even when the public RPC is throttled; live chain data replaces it as it loads:
+
+```bash
+pnpm snapshot     # writes apps/web/public/registry-devnet.json
+```
+
+Set `VITE_RPC_DEVNET` / `VITE_RPC_MAINNET` at build time to ship a better default RPC; users can also paste their own in the network menu.
 
 ### CLI
 
@@ -95,6 +107,7 @@ pnpm cli launch <config> --name "My Token" --symbol MINE --buy 0.1
 pnpm cli buy <pool> 0.5 | pnpm cli sell <pool> all
 pnpm cli status <pool> | pnpm cli graduate <pool> | pnpm cli claim <pool>
 pnpm cli keeper                                    # graduate every completed pool of listed presets
+pnpm cli snapshot                                  # static registry copy for the web app
 ```
 
 ### MCP server (for Claude and other agents)
@@ -132,7 +145,8 @@ The app is a static site with no backend: the chain is the database. See [docs/G
 ## Limitations
 
 - Simulations model market behaviour with simple agents. They are exact about what the pool does for a given sequence of trades, not predictions of what people will do.
-- The registry is read with `getSignaturesForAddress` plus one transaction fetch per listing. That is fine for thousands of listings; a cached indexer would sit in front beyond that. Public mainnet RPCs throttle these reads; set your own endpoint in the network menu.
+- The registry is read with `getSignaturesForAddress` plus one transaction fetch per listing. That is fine for thousands of listings; a cached indexer would sit in front beyond that. Public RPCs throttle these reads: the shipped snapshot covers first paint, reads retry with backoff, and a custom endpoint can be set in the network menu.
+- The Devnet Burner keeps its key in browser storage. It exists only on devnet and only for trying the app.
 - Token metadata URIs are supplied by the creator; the app does not host images.
 - Transfer-hook (Token-2022) pools and token-badge quote mints are supported by DBC but not exposed in the Studio yet.
 

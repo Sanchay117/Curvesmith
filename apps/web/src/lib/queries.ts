@@ -9,22 +9,57 @@ import {
     fetchListings,
     fetchTokenMetas,
     Listing,
+    listingsFromSnapshot,
     loadPool,
     Network,
     presetStats,
     PresetSpec,
+    RegistrySnapshot,
     specFromConfig,
+    statsFromSnapshot,
+    withRetry,
 } from '@curvesmith/core'
 import { useEffect, useMemo, useState } from 'react'
 import { useNetwork } from './network'
 
+/**
+ * The static registry snapshot shipped with the build (written by `curvesmith snapshot`).
+ * Pages paint from it immediately while live chain reads catch up: stale-while-revalidate.
+ */
+export function useSnapshot(): RegistrySnapshot | null {
+    const { network } = useNetwork()
+    const q = useQuery({
+        queryKey: ['snapshot', network],
+        queryFn: async () => {
+            const res = await fetch(`./registry-${network}.json`)
+            if (!res.ok) return null
+            const snap = (await res.json()) as RegistrySnapshot
+            return snap?.v === 1 && snap.network === network ? snap : null
+        },
+        staleTime: Infinity,
+        retry: false,
+    })
+    return q.data ?? null
+}
+
 export function useListings() {
     const { connection } = useConnection()
     const { network, rpcUrl } = useNetwork()
+    const snapshot = useSnapshot()
+    const placeholder = useMemo(() => (snapshot ? listingsFromSnapshot(snapshot, connection) : undefined), [snapshot, connection])
     return useQuery({
         queryKey: ['listings', network, rpcUrl],
-        queryFn: () => fetchListings(connection),
+        queryFn: async () => {
+            try {
+                return await withRetry(() => fetchListings(connection), 4)
+            } catch (e) {
+                // a throttled RPC should degrade to the snapshot, not to an error page
+                if (placeholder) return placeholder
+                throw e
+            }
+        },
         staleTime: 60_000,
+        placeholderData: placeholder,
     })
 }
 
@@ -66,20 +101,36 @@ function limiter(n: number) {
 }
 const scan = limiter(2)
 
-/** One definition of the stats query so cards, totals and Earnings share a cache entry. */
-export function statsQuery(connection: Connection, network: Network, rpcUrl: string, l: Listing) {
+/**
+ * One definition of the stats query so cards, totals and Earnings share a cache entry.
+ * Pass a snapshot to show its (display-only) stats while the live scan runs.
+ */
+export function statsQuery(connection: Connection, network: Network, rpcUrl: string, l: Listing, snapshot?: RegistrySnapshot | null) {
+    const key = l.config.toBase58()
+    const cached = snapshot?.stats[key] ? statsFromSnapshot(snapshot.stats[key]) : undefined
     return {
-        queryKey: ['stats', network, rpcUrl, l.config.toBase58()],
-        queryFn: () => scan(() => presetStats(connection, l.config, l.poolConfig, specOfListing(l, network).quote === 'SOL' ? 9 : 6)),
+        queryKey: ['stats', network, rpcUrl, key],
+        queryFn: async () => {
+            try {
+                return await scan(() =>
+                    withRetry(() => presetStats(connection, l.config, l.poolConfig, specOfListing(l, network).quote === 'SOL' ? 9 : 6), 4)
+                )
+            } catch (e) {
+                if (cached) return cached
+                throw e
+            }
+        },
         staleTime: 30_000,
+        placeholderData: cached,
     }
 }
 
 export function usePresetStats(l: Listing | undefined) {
     const { connection } = useConnection()
     const { network, rpcUrl } = useNetwork()
+    const snapshot = useSnapshot()
     return useQuery({
-        ...(l ? statsQuery(connection, network, rpcUrl, l) : { queryKey: ['stats', 'none'], queryFn: async () => null }),
+        ...(l ? statsQuery(connection, network, rpcUrl, l, snapshot) : { queryKey: ['stats', 'none'], queryFn: async () => null }),
         enabled: !!l,
         refetchInterval: 60_000,
     })

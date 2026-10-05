@@ -41,7 +41,7 @@ function DetailBody({ ev, extraTabs }: { ev: Evaluation; extraTabs?: { id: strin
                     <Panel title="Price path">
                         <CurveChart a={a} />
                     </Panel>
-                    <div className="grid gap-5 xl:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
                         <Panel title="Where the supply goes">
                             <SupplyBar a={a} />
                         </Panel>
@@ -88,7 +88,7 @@ function Header({
     description?: string
 }) {
     return (
-        <div className="mb-6 grid gap-6 lg:grid-cols-[1fr_auto] lg:items-start">
+        <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
             <div className="min-w-0">
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                     <Badge tone="accent">{CATEGORY_LABEL[category] ?? category}</Badge>

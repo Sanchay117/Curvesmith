@@ -180,6 +180,24 @@ Lessons from real runs:
 - **Polyfills**: Solana libraries expect Node's `Buffer`; `src/polyfills.ts` installs it before anything else loads. (A Vite polyfill plugin was tried first and caused a circular import between pre-bundled dependencies, so it was replaced.)
 - **Responsiveness**: evaluation (compile + two simulations + lint) takes tens of milliseconds, so the Studio uses `useDeferredValue` to keep sliders smooth and shows the last valid design (dimmed) when an edit does not compile. Marketplace cards evaluate after first paint and share a cache with detail pages.
 - **Charts** are hand-written SVG (crosshair, tooltip, legend, log scale) following a validated palette, so they theme cleanly in dark and light mode without a charting dependency.
+- **Devnet Burner wallet** (`src/lib/burner.ts`): a small wallet-adapter implementation with its key in localStorage, offered only on devnet, so anyone can try every flow without installing or configuring a wallet extension.
+- **Registry snapshot** (`curvesmith snapshot`, `src/lib/queries.ts`): the build ships a static copy of the registry and preset stats. Pages paint from it instantly, then live chain data replaces it (stale-while-revalidate); if the live read fails after retries, the snapshot stays on screen instead of an error. Config accounts are stored as raw bytes and decoded with the DBC program's own coder, so the snapshot cannot drift from the real account layout.
+
+### 5.10 What testing against the real chain taught us
+
+Unit tests and the LiteSVM suite proved the math. Clicking through the app against public devnet found a different class of bug: how a real app behaves when the network is slow, out of order or rate limited. Each one is worth knowing as a general lesson.
+
+| Symptom | Root cause | Fix and lesson |
+|---|---|---|
+| A live marketplace card showed another preset's numbers | JSON-RPC batch responses can arrive in any order, and responses were paired with requests by array index | Read the signature from each transaction itself and sort by slot. Never trust batch order. |
+| A just-published preset was missing from the marketplace | Under rate limiting, a transaction fetch came back `null` and the reader skipped it silently | Retry missing transactions with backoff. A rate limit must degrade speed, never correctness. |
+| The buy quote showed a 10% sniper fee a minute after launch, when the real fee was 1.2% | The chain-clock query went stale while its refetches were throttled, so quotes were priced at launch time | Sync the chain clock once a minute and tick it locally every second. Time-dependent pricing needs a clock that cannot freeze. |
+| Long listings failed on devnet with "exceeded CUs meter" | SPL Memo logs the memo, about 380 compute units per byte, over the default 200k budget | Measure on chain, then request a compute budget sized to the memo. |
+| "Sell" tab appeared not to work | An open dropdown that never closed was covering it | Popovers close on outside click, Escape and navigation. |
+| Charts overflowed phone screens | A grid with no column template let the chart's initial 600px width size the column | Explicit `grid-cols-1` on mobile, a scalable SVG, and a resize observer that re-attaches when its element changes. |
+| Publishing hung on "List in registry confirmed" | The UI waited for a full registry re-read before navigating | Insert the new listing into the cache directly (its config is derived exactly), navigate, refresh in the background. |
+
+The earlier bugs found by the LiteSVM suite (graduation amount rounding up, not down; other launchpads' dynamic token supply) were math bugs; these were systems bugs. A serious project needs both kinds of testing.
 
 ## 6. Trade-offs
 
@@ -232,7 +250,11 @@ pnpm --filter @curvesmith/web build   # static site in apps/web/dist
 1. Marketplace: live devnet presets with grades and launch counts; template library.
 2. Studio: start from Fair Meme, switch the shape to Tranches and then Freehand, watch the curve, supply split and grade update; open Simulate and compare Sniper rush ROI with the fee decay on versus a flat 1% fee.
 3. Paste the mainnet config `2bFH5q216w51UopEZP359NGGSUUeCwmycoBzP8Jc83at` into `/#/p/<address>` (with a mainnet RPC) to show an F-graded audit of a live launchpad.
-4. Publish a preset on devnet (two transactions, one wallet prompt), launch a token from it, buy, and show the graduated Speedrun token on DAMM v2 and the Earnings page.
+4. With the Devnet Burner: open Micro Speedrun, launch a token with a first buy, buy it to graduation (the quote shows the partial fill), click Graduate to DAMM v2, then claim author and creator fees on the Earnings page. Watch the sniper fee decay live in the buy quote during the first 30 seconds.
 5. Show `pnpm test` passing and the MCP server answering `simulate_preset`.
 
-**Before submitting** (things only you can do): record the pitch and demo videos, push the repo to GitHub (public, or grant `dannxbt` read access), deploy the static site (GitHub Pages or Vercel), and optionally publish one or two presets on mainnet with a small amount of SOL for the traction criterion.
+**Before submitting** (things only you can do):
+- Record the pitch video (2 to 3 minutes) and the demo video (3 minutes or less).
+- Push the repo (it is at `github.com/Sanchay117/Curvesmith`); keep it public, or grant `dannxbt` read access.
+- Run `pnpm snapshot`, commit the refreshed `apps/web/public/registry-devnet.json`, push, and enable GitHub Pages (Settings, Pages, Source: GitHub Actions). The workflow in `.github/workflows/pages.yml` tests, builds and deploys on every push to `main`.
+- Optionally publish one or two presets on mainnet with a small amount of SOL (about 0.01 SOL of rent each) for the traction criterion: `pnpm cli -n mainnet-beta -k <your keypair> publish fair-meme`.

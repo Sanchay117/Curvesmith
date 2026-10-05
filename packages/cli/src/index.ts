@@ -31,6 +31,7 @@ import {
     buildLaunchTransaction,
     buildMigrateTransaction,
     buildPublishTransactions,
+    buildSnapshot,
     buildSwapTransaction,
     chainTime,
     dbcClient,
@@ -52,6 +53,7 @@ import {
     SCENARIOS,
     simulate,
     specFromConfig,
+    withRetry,
 } from '@curvesmith/core'
 
 // ---------------------------------------------------------------------------------------
@@ -244,12 +246,35 @@ program
     .action(
         run(async () => {
             const c = ctx()
-            const listings = await fetchListings(c.connection)
+            const listings = await withRetry(() => fetchListings(c.connection))
             if (!listings.length) return console.log('no listings')
             for (const l of listings) {
-                const st = await presetStats(c.connection, l.config, l.poolConfig, quoteDecimalsOf(c, l.poolConfig.quoteMint).decimals)
+                const st = await withRetry(() => presetStats(c.connection, l.config, l.poolConfig, quoteDecimalsOf(c, l.poolConfig.quoteMint).decimals))
                 console.log(`${pad(l.meta.n, 22)} ${l.config.toBase58()}  ${st.launches} launches, ${st.graduated} graduated`)
             }
+        })
+    )
+
+program
+    .command('snapshot')
+    .option('-o, --out <path>', 'output file', 'apps/web/public/registry-<network>.json')
+    .description('write a static copy of the registry and preset stats for the web app to paint from instantly')
+    .action(
+        run(async (o: { out: string }) => {
+            const c = ctx()
+            const listings = await withRetry(() => fetchListings(c.connection))
+            const raw = new Map<string, Uint8Array>()
+            const infos = await c.connection.getMultipleAccountsInfo(listings.map((l) => l.config))
+            infos.forEach((info, i) => info && raw.set(listings[i].config.toBase58(), info.data))
+            const stats = new Map<string, Awaited<ReturnType<typeof presetStats>>>()
+            for (const l of listings) {
+                stats.set(l.config.toBase58(), await withRetry(() => presetStats(c.connection, l.config, l.poolConfig, quoteDecimalsOf(c, l.poolConfig.quoteMint).decimals)))
+            }
+            const snap = buildSnapshot(c.network, listings, raw, stats)
+            const file = path.resolve(userCwd, o.out.replace('<network>', c.network))
+            fs.mkdirSync(path.dirname(file), { recursive: true })
+            fs.writeFileSync(file, JSON.stringify(snap))
+            console.log(`wrote ${snap.listings.length} listings to ${file}`)
         })
     )
 
@@ -364,10 +389,10 @@ program
             const c = ctx()
             const me = signer(c)
             for (;;) {
-                const listings = await fetchListings(c.connection)
+                const listings = await withRetry(() => fetchListings(c.connection))
                 let cranked = 0
                 for (const l of listings) {
-                    const st = await presetStats(c.connection, l.config, l.poolConfig, quoteDecimalsOf(c, l.poolConfig.quoteMint).decimals)
+                    const st = await withRetry(() => presetStats(c.connection, l.config, l.poolConfig, quoteDecimalsOf(c, l.poolConfig.quoteMint).decimals))
                     for (const snap of st.snapshots) {
                         const s = snap.pool.poolState
                         if (s.isMigrated || s.quoteReserve.lt(snap.config.migrationQuoteThreshold)) continue

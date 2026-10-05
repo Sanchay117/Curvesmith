@@ -40,5 +40,24 @@
     "signature": "5tPG56sMC4HmNtFaWqKqa6mBZzhCLxv9deMpBSsoSr1JnQyWSAdymHEbkYT6wCMpV8r5sYnn5pq85ssMXa7WPV97",
     "dammPool": "899V27KwFeLiz8dWnabosjKjq6wEUvANo21HHj4jCDva"
   },
-  "claim": "4gFXKb4dDqn1DR5vRYrUTFUMPvgE3XZzfKU2LZZntNPcetoSDTVLq69qktGtg9mYT3paEBLM2rat91gmDxUXC6vY"
+  "claim": "4gFXKb4dDqn1DR5vRYrUTFUMPvgE3XZzfKU2LZZntNPcetoSDTVLq69qktGtg9mYT3paEBLM2rat91gmDxUXC6vY",
+  "webUiRun": {
+    "note": "Created entirely through the web app with the devnet burner wallet: Studio publish, Launch, Buy (partial fill to graduation), Sell, Graduate, Claim (token page) and Claim (Earnings).",
+    "presets": {
+      "Pocket S-Curve": "CQehaMkqh4Aaah2KnXXSvuhEPsjSNRjnknxF5mRR3LPg",
+      "Micro Speedrun": "6QyJH13S33qiwVrsd1Atmw9ZUCWyWbNekjYkz2cBcxUF",
+      "Freehand Breakout": "LQ8GF5EaLiYKUfUvLdnKmVFaEQxkJkZ6zWD7eNtuHgX"
+    },
+    "launches": {
+      "PKT": {
+        "pool": "3nQMHLZPCSdzCeFDGpXrJEf7HJzw5XbdhNFCMLDBNVTV",
+        "mint": "DaCrmMApNgzTLjXh5iY1EEBSrvX67huzK5CpM51jx9Qr"
+      },
+      "GRAD": {
+        "pool": "8C1BXwFgpDEnSQKmV4XHbvKHS18Uhpjebb6jckqhJDVF",
+        "mint": "71fLD8GsYPRDLLMbG6JxHSmH9FXdSdGFhHdnxgGWrTPW",
+        "dammPool": "2791FLDVCoL6pa6UPVSoHwmsLLcNsEyJKPLNAznS6SeG"
+      }
+    }
+  }
 }

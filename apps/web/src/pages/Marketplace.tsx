@@ -5,10 +5,10 @@ import { useConnection } from '@solana/wallet-adapter-react'
 import { LIBRARY, LIBRARY_IDS, Listing, PresetCategory } from '@curvesmith/core'
 import { PresetCard, CATEGORY_LABEL } from '../components/PresetCard'
 import { Button, cx, Empty, Skeleton, TextInput } from '../components/ui'
-import { statsQuery, useListings, usePresetStats } from '../lib/queries'
+import { statsQuery, useListings, usePresetStats, useSnapshot } from '../lib/queries'
 import { useNetwork } from '../lib/network'
 import { listingEvaluation, templateEvaluation, useDeferredEvaluation } from '../lib/evaluations'
-import { num, short } from '../lib/format'
+import { ago, num, short } from '../lib/format'
 
 function ListingCard({ l }: { l: Listing }) {
     const { network } = useNetwork()
@@ -76,8 +76,9 @@ export function Marketplace() {
     const templates = LIBRARY_IDS.filter((id) => match(LIBRARY[id].name, LIBRARY[id].tagline, LIBRARY[id].category, LIBRARY[id].tags))
 
     // aggregate stats share their cache with the cards (same query keys)
+    const snapshot = useSnapshot()
     const statQueries = useQueries({
-        queries: (listings.data ?? []).map((l) => statsQuery(connection, network, rpcUrl, l)),
+        queries: (listings.data ?? []).map((l) => statsQuery(connection, network, rpcUrl, l, snapshot)),
     })
     const totals = statQueries.reduce(
         (acc, s) => {
@@ -92,7 +93,7 @@ export function Marketplace() {
 
     return (
         <div>
-            <section className="mb-10 grid gap-8 lg:grid-cols-[1.25fr_1fr] lg:items-end">
+            <section className="mb-10 grid grid-cols-1 gap-8 lg:grid-cols-[1.25fr_1fr] lg:items-end">
                 <div>
                     <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-xs text-ink-2">
                         <span className="size-1.5 rounded-full bg-accent" /> Built on Meteora Dynamic Bonding Curve
@@ -152,7 +153,11 @@ export function Marketplace() {
             <section className="mb-12">
                 <div className="mb-4 flex items-baseline justify-between">
                     <h2 className="text-xl font-semibold">Live on {network === 'devnet' ? 'devnet' : 'mainnet'}</h2>
-                    <span className="text-xs text-muted">Read from the CSR-1 on-chain registry. Only a config's fee claimer can list it.</span>
+                    <span className="text-xs text-muted">
+                        {listings.isPlaceholderData && snapshot
+                            ? `Showing a registry snapshot from ${ago(snapshot.generatedAt)} while live chain data loads.`
+                            : "Read from the CSR-1 on-chain registry. Only a config's fee claimer can list it."}
+                    </span>
                 </div>
                 {listings.isLoading ? (
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -3,7 +3,17 @@ import { useNavigate } from 'react-router-dom'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { useWalletModal } from '@solana/wallet-adapter-react-ui'
 import { useQueryClient } from '@tanstack/react-query'
-import { buildPublishTransactions, explorerUrl, LintReport, PresetSpec } from '@curvesmith/core'
+import {
+    buildPublishTransactions,
+    compilePreset,
+    deriveConfigState,
+    explorerUrl,
+    LintReport,
+    Listing,
+    listingMetaFromSpec,
+    PresetSpec,
+    QUOTE_ASSETS,
+} from '@curvesmith/core'
 import { Button } from '../ui'
 import { useNetwork } from '../../lib/network'
 import { useToast } from '../../lib/toast'
@@ -13,7 +23,7 @@ export function PublishPanel({ spec, lint }: { spec: PresetSpec; lint: LintRepor
     const { connection } = useConnection()
     const wallet = useWallet()
     const { setVisible } = useWalletModal()
-    const { network } = useNetwork()
+    const { network, rpcUrl } = useNetwork()
     const toast = useToast()
     const navigate = useNavigate()
     const qc = useQueryClient()
@@ -40,8 +50,26 @@ export function PublishPanel({ spec, lint }: { spec: PresetSpec; lint: LintRepor
                 body: `Config ${plan.config.publicKey.toBase58().slice(0, 8)}... is live and listed. You earn its partner fees.`,
                 href: explorerUrl(network, 'tx', sigs[0]),
             })
-            await qc.invalidateQueries({ queryKey: ['listings'] })
-            navigate(`/p/${plan.config.publicKey.toBase58()}`)
+            // Re-reading the whole registry is slow on public RPCs, so insert the new listing
+            // directly. Its config account is derived exactly (the same derivation the parity
+            // tests check against the program), then refresh from chain in the background.
+            const config = plan.config.publicKey
+            const author = wallet.publicKey
+            const listing: Listing = {
+                config,
+                author,
+                signature: sigs[1],
+                blockTime: Math.floor(Date.now() / 1000),
+                meta: listingMetaFromSpec(config, spec),
+                poolConfig: deriveConfigState(compilePreset(spec).params, {
+                    quoteMint: QUOTE_ASSETS[network][spec.quote].mint,
+                    feeClaimer: author,
+                    leftoverReceiver: author,
+                }),
+            }
+            qc.setQueryData<Listing[]>(['listings', network, rpcUrl], (old) => [listing, ...(old ?? []).filter((l) => !l.config.equals(config))])
+            void qc.invalidateQueries({ queryKey: ['listings'] })
+            navigate(`/p/${config.toBase58()}`)
         } catch (e) {
             toast({ kind: 'error', title: 'Publish failed', body: explainError(e) })
         } finally {
