@@ -1,0 +1,20 @@
+{
+  "name": "curvesmith",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Launch-economics studio and preset marketplace for Meteora's Dynamic Bonding Curve",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@12.4.1",
+  "scripts": {
+    "dev": "pnpm --filter @curvesmith/web dev",
+    "build": "pnpm --filter @curvesmith/web build",
+    "test": "pnpm --filter @curvesmith/core test",
+    "typecheck": "pnpm -r typecheck",
+    "cli": "pnpm --filter @curvesmith/cli exec tsx src/index.ts",
+    "mcp": "pnpm --filter @curvesmith/mcp exec tsx src/index.ts"
+  }
+}

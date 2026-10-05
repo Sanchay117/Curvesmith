@@ -1,0 +1,14 @@
+node_modules
+dist
+.DS_Store
+*.log
+.env
+.env.*
+!.env.example
+# local wallets: never commit private keys
+.keys/
+*.keypair.json
+coverage
+.vite
+# upstream repos kept locally for reading (DBC program, DBC SDK, meteora-invent)
+.reference/

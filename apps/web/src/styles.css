@@ -1,0 +1,174 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens. Components only ever reference these roles, so light and dark are
+ * swapped in one place. Chart series and status colors follow the validated reference
+ * palette (separate steps per mode, not an automatic flip).
+ */
+:root {
+    color-scheme: light;
+    --page: #f6f5f1;
+    --surface: #fcfcfb;
+    --surface-2: #f1f0eb;
+    --surface-3: #e8e7e1;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --muted: #7d7b75;
+    --grid: #e1e0d9;
+    --axis: #c3c2b7;
+    --border: rgba(11, 11, 11, 0.1);
+    --border-strong: rgba(11, 11, 11, 0.18);
+    --accent: #e0531f;
+    --accent-hover: #c94716;
+    --accent-ink: #ffffff;
+    --accent-wash: rgba(224, 83, 31, 0.1);
+    --s1: #2a78d6;
+    --s2: #eb6834;
+    --s3: #1baf7a;
+    --s4: #eda100;
+    --s5: #e87ba4;
+    --good: #0ca30c;
+    --good-ink: #006300;
+    --warning: #fab219;
+    --serious: #ec835a;
+    --critical: #d03b3b;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme='light'])) {
+        color-scheme: dark;
+        --page: #0d0d0d;
+        --surface: #1a1a19;
+        --surface-2: #232321;
+        --surface-3: #2d2d2a;
+        --ink: #ffffff;
+        --ink-2: #c3c2b7;
+        --muted: #8f8d86;
+        --grid: #2c2c2a;
+        --axis: #383835;
+        --border: rgba(255, 255, 255, 0.1);
+        --border-strong: rgba(255, 255, 255, 0.18);
+        --accent: #ff7a45;
+        --accent-hover: #ff9466;
+        --accent-ink: #160a04;
+        --accent-wash: rgba(255, 122, 69, 0.12);
+        --s1: #3987e5;
+        --s2: #d95926;
+        --s3: #199e70;
+        --s4: #c98500;
+        --s5: #d55181;
+        --good-ink: #0ca30c;
+    }
+}
+
+:root[data-theme='dark'] {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --surface-2: #232321;
+    --surface-3: #2d2d2a;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --muted: #8f8d86;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255, 255, 255, 0.1);
+    --border-strong: rgba(255, 255, 255, 0.18);
+    --accent: #ff7a45;
+    --accent-hover: #ff9466;
+    --accent-ink: #160a04;
+    --accent-wash: rgba(255, 122, 69, 0.12);
+    --s1: #3987e5;
+    --s2: #d95926;
+    --s3: #199e70;
+    --s4: #c98500;
+    --s5: #d55181;
+    --good-ink: #0ca30c;
+}
+
+@theme inline {
+    --color-page: var(--page);
+    --color-surface: var(--surface);
+    --color-surface-2: var(--surface-2);
+    --color-surface-3: var(--surface-3);
+    --color-ink: var(--ink);
+    --color-ink-2: var(--ink-2);
+    --color-muted: var(--muted);
+    --color-grid: var(--grid);
+    --color-line: var(--border);
+    --color-line-strong: var(--border-strong);
+    --color-accent: var(--accent);
+    --color-accent-hover: var(--accent-hover);
+    --color-accent-ink: var(--accent-ink);
+    --color-accent-wash: var(--accent-wash);
+    --color-good: var(--good);
+    --color-good-ink: var(--good-ink);
+    --color-warning: var(--warning);
+    --color-serious: var(--serious);
+    --color-critical: var(--critical);
+    --font-sans: 'Geist', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', monospace;
+}
+
+html,
+body {
+    background: var(--page);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+}
+
+body {
+    min-height: 100vh;
+}
+
+.tnum {
+    font-variant-numeric: tabular-nums;
+}
+
+/* range inputs styled to the theme */
+input[type='range'] {
+    accent-color: var(--accent);
+}
+
+/* the wallet adapter ships its own styles; bring its button in line with ours */
+.wallet-adapter-button {
+    font-family: var(--font-sans) !important;
+    height: 36px !important;
+    padding: 0 14px !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    border-radius: 10px !important;
+    background: var(--accent) !important;
+    color: var(--accent-ink) !important;
+}
+.wallet-adapter-button:not([disabled]):hover {
+    background: var(--accent-hover) !important;
+}
+.wallet-adapter-button-start-icon img {
+    width: 18px;
+    height: 18px;
+}
+.wallet-adapter-modal-wrapper {
+    background: var(--surface) !important;
+    color: var(--ink) !important;
+    font-family: var(--font-sans) !important;
+}
+.wallet-adapter-modal-title,
+.wallet-adapter-modal-list .wallet-adapter-button {
+    color: var(--ink) !important;
+    background: transparent !important;
+}
+.wallet-adapter-modal-list .wallet-adapter-button:hover {
+    background: var(--surface-2) !important;
+}
+.wallet-adapter-dropdown-list {
+    background: var(--surface) !important;
+    border: 1px solid var(--border);
+}
+.wallet-adapter-dropdown-list-item {
+    color: var(--ink) !important;
+}
+.wallet-adapter-dropdown-list-item:hover {
+    background: var(--surface-2) !important;
+}

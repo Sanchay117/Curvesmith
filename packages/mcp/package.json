@@ -1,0 +1,28 @@
+{
+  "name": "@curvesmith/mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "curvesmith-mcp": "./src/index.ts"
+  },
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@curvesmith/core": "workspace:*",
+    "@meteora-ag/dynamic-bonding-curve-sdk": "1.5.13",
+    "@modelcontextprotocol/sdk": "^1.32.0",
+    "@solana/web3.js": "^1.99.0",
+    "bn.js": "^5.2.1",
+    "decimal.js": "^10.5.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/bn.js": "^5.1.6",
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "5.9.3"
+  }
+}

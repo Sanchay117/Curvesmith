@@ -1,0 +1,44 @@
+{
+  "configs": {
+    "fair-meme": "GJ3nd3yuZ4cFkCMSuhwsvbdXKUHxzKUcdsSqkcQaoJRJ",
+    "long-curve": "75fBkb5WaHE8eMjQYP8wZSAEHgoDPj5CpotnsRizP19e",
+    "nav-sale": "BccbPGmMGC1ybgUdyUF7cWAg9jYebyuKamU3WhSwEPSJ",
+    "equity-tranches": "GG1326dz6KQJ9Mry7KrnuL9uE1D6RBZbAtRC4a9GXTC4",
+    "s-curve": "Hd4fDRQrwPBowsNm6HGuttbAyRx8ThRdZaLV6gCkLtWs",
+    "agent-treasury": "52mShCCoezWULK2HHDCnkrqwnHj26mGUy96CBcCuPLEx",
+    "creator-coin": "9FhtTihiN3TjXquVJEwy3fwDB72HKSpzZQrusAEnm97q",
+    "speedrun": "6WiKoynHRBM6xqgX9yn7dTm8pt3r8U8JSU4dTjU7WMmj"
+  },
+  "launches": {
+    "SPEED": {
+      "pool": "5RmGe4MpuNFXMrrfThyfujdFCWCzfeCMRfpCRxhZU9hv",
+      "mint": "e2zXKij5adi4ojE9kvTHD329qd8J6YvJxDzxHfJPsyZ"
+    },
+    "CSCAT": {
+      "pool": "9ikB99xTKRUizsvuLijGwrNhCkx5Xx6PeGB5mqJ2MPEk",
+      "mint": "BHAj3V9NcafYmeZ69Pt3yKeQf9B7J6TwX7nAgMUaqhuK"
+    },
+    "AGNT": {
+      "pool": "CYESnokysAPFLgRGa37vVVnfpGP5z7Hztk6fws3jXj61",
+      "mint": "EnLWur5BtaStyQSN2pTwuZnhrTEKrhWBEGesWrHjsGic"
+    },
+    "STUDIO": {
+      "pool": "4NYyFEyzi47gtgbwmBRXQ6GGnNchqLycyww4gFCyL4rT",
+      "mint": "8nZVtYsQqTnGGRKruGhZV36UQhGcWgQZ6CLy4NS7JbxX"
+    },
+    "SIG": {
+      "pool": "DwYsuHxeXVVwogdrZqwhQkYjZDGnj9XkfSXqBmF12p2H",
+      "mint": "418SNR4jBfbaXqrTvyfo2xiKHX7ubE3DRB51fw1H3KhN"
+    },
+    "CMNS": {
+      "pool": "B4trKEyN1FGRXKXpWFL9CUHuCzkYTEfth76eskpriE3J",
+      "mint": "BwX2r4YAjfXYHdpCTC2Sp7xY6YsRug4VJtGL39PShYit"
+    }
+  },
+  "activity": true,
+  "graduation": {
+    "signature": "5tPG56sMC4HmNtFaWqKqa6mBZzhCLxv9deMpBSsoSr1JnQyWSAdymHEbkYT6wCMpV8r5sYnn5pq85ssMXa7WPV97",
+    "dammPool": "899V27KwFeLiz8dWnabosjKjq6wEUvANo21HHj4jCDva"
+  },
+  "claim": "4gFXKb4dDqn1DR5vRYrUTFUMPvgE3XZzfKU2LZZntNPcetoSDTVLq69qktGtg9mYT3paEBLM2rat91gmDxUXC6vY"
+}

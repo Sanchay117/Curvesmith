@@ -1,0 +1,6 @@
+{
+    "name": "Curvesmith launch",
+    "symbol": "CSMITH",
+    "description": "A token launched from a Curvesmith preset on Meteora's Dynamic Bonding Curve.",
+    "image": "https://raw.githubusercontent.com/MeteoraAg/meteora-invent/main/scaffolds/fun-launch/public/logo.svg"
+}
