@@ -16,8 +16,10 @@ concurrency:
 
 jobs:
   # Differential and lifecycle tests against the real DBC / DAMM v2 binaries (LiteSVM).
+  # macOS on purpose: LiteSVM 0.8's Linux native build aborts with std::bad_alloc while
+  # executing DBC swaps (reproduced in Docker), while the macOS build runs the suite cleanly.
   test:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

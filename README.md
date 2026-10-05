@@ -60,6 +60,8 @@ The simulator is only useful if it is exactly right, so the test suite runs Mete
 pnpm test        # 40 tests, about 3 seconds, no network needed
 ```
 
+The suite runs on macOS (locally and in CI). LiteSVM 0.8's Linux native build aborts with `std::bad_alloc` while executing DBC swaps, so CI runs the tests on a macOS runner.
+
 ## Devnet deployment
 
 Eleven presets are live in the devnet registry: the eight library templates (published with the CLI) and three designed and published entirely in the web Studio, including a hand-drawn freehand curve. Eight tokens have been launched from them, and two have graduated into real DAMM v2 pools: one driven by the CLI, one driven click by click through the web app (publish, launch, buy, sell, buy to graduation, graduate, claim as author, claim as creator from Earnings). Every address is in [`deployments/devnet.json`](deployments/devnet.json).
