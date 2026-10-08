@@ -164,7 +164,11 @@ settings:
 
 importers:
 
-  .: {}
+  .:
+    devDependencies:
+      esbuild:
+        specifier: 0.28.2
+        version: 0.28.2
 
   apps/web:
     dependencies:
@@ -238,9 +242,6 @@ importers:
 
   packages/cli:
     dependencies:
-      '@launchproof/core':
-        specifier: workspace:*
-        version: link:../core
       '@meteora-ag/dynamic-bonding-curve-sdk':
         specifier: 1.5.13
         version: 1.5.13(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@6.0.6)
@@ -266,6 +267,9 @@ importers:
       '@types/node':
         specifier: ^24.0.0
         version: 24.19.1
+      esbuild:
+        specifier: 0.28.2
+        version: 0.28.2
       tsx:
         specifier: ^4.20.0
         version: 4.23.15

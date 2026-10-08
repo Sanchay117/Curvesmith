@@ -2,11 +2,11 @@
 
 ## Project Structure & Module Organization
 
-Launchproof audits Meteora DBC configs with a census, Studio, CLI, and MCP server. Packages use `@launchproof/*`.
+Launchproof audits Meteora DBC configs with a census, Studio, CLI, and MCP server. Core and MCP use `@launchproof/*`; the CLI is `launchproof`.
 
 - `apps/web/src/` contains React pages and components; `apps/web/public/` holds static assets and the published census.
 - `packages/core/src/` owns audit policy, curve math, simulation, registry logic, and transaction builders.
-- `packages/cli/src/` and `packages/mcp/src/` expose the core.
+- `packages/cli/src/` and `packages/mcp/src/` expose the core. Build the npm CLI with `pnpm --filter launchproof build`.
 - `packages/core/test/` holds Vitest, LiteSVM, and differential tests; `fixtures/` holds program binaries and account snapshots.
 
 ## Build, Test, and Development Commands
@@ -36,4 +36,4 @@ History uses short subjects without a fixed prefix. Write an imperative subject.
 
 The mainnet census counts observed standard DBC pools, not all launches. It audits the busiest configs, samples 3,000 single-pool configs, and groups pools by fee-claimer address. See `docs/CENSUS.md`; verify the sample and grouping offline with `pnpm cli verify-census apps/web/public/census-mainnet-beta.json --cache .cache/census-v1`. Policy 2 covers fee splits, LP vesting, token type, and migration terms; policy-1 receipts still verify. Studio Review applies the same audit to compiled designs; its 0-100 grade is only a design heuristic.
 
-Preserve the CSR-1 seed `curvesmith:registry:v1`. Use devnet for development. Never commit `.keys/` or secrets. Do not access wallets, send transactions, edit `video/`, or push. `VITE_RPC_DEVNET` and `VITE_RPC_MAINNET` are public browser build settings.
+Preserve the CSR-1 seed `curvesmith:registry:v1`. Develop on devnet. Never commit `.keys/` or secrets. Do not access wallets, send transactions, edit `video/`, or push. `VITE_RPC_DEVNET` and `VITE_RPC_MAINNET` are public browser build settings.

@@ -55,6 +55,8 @@ pnpm cli inspect fair-meme
 
 `census` defaults to devnet like the rest of the CLI; explicitly select `-n mainnet-beta` for the mainnet report. Supply `-u <rpc-url>` before the command if the public endpoint limits scans. The raw archive stays local in `.cache/`; the compact report and selected account evidence ship in `apps/web/public/`.
 
+The standalone CLI can be built with `pnpm --filter launchproof build` and checked with `node packages/cli/dist/index.mjs --help`. After the maintainer publishes it, `npx launchproof audit <config-address>` runs the read-only audit.
+
 ## Try the lifecycle on devnet
 
 Open **Reference configs**, connect a Devnet Burner wallet, fund it through the network menu or [Solana's faucet](https://faucet.solana.com), then choose **Micro Speedrun**. Launch, buy until the curve completes, migrate into DAMM v2, and inspect Earnings. Devnet tokens have no monetary value.
@@ -82,7 +84,7 @@ Other commands include `launch`, `buy`, `sell`, `status`, `graduate`, `claim`, a
 }
 ```
 
-The MCP exposes `audit_config`, `inspect_config`, template evaluation and simulation, market/pool reads, and unsigned publish, launch, and swap transaction builders. It does not expose migrate or claim builders. Builders return transactions for an external wallet to sign. RPC overrides: `LAUNCHPROOF_RPC_DEVNET` and `LAUNCHPROOF_RPC_MAINNET`. Browser defaults use `VITE_RPC_DEVNET` and `VITE_RPC_MAINNET`; these values are public in the bundle.
+The MCP exposes `get_state_of_dbc`, `get_census_row`, `audit_config`, `inspect_config`, template evaluation and simulation, market/pool reads, and unsigned publish, launch, and swap transaction builders. It does not expose migrate or claim builders. Builders return transactions for an external wallet to sign. RPC overrides: `LAUNCHPROOF_RPC_DEVNET` and `LAUNCHPROOF_RPC_MAINNET`. Browser defaults use `VITE_RPC_DEVNET` and `VITE_RPC_MAINNET`; these values are public in the bundle.
 
 ## Repository map
 

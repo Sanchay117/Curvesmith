@@ -10,6 +10,7 @@
  */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
+import fs from 'node:fs'
 import { z } from 'zod'
 import { Connection, PublicKey, Transaction } from '@solana/web3.js'
 import BN from 'bn.js'
@@ -21,6 +22,7 @@ import {
     buildPublishTransactions,
     buildSwapTransaction,
     chainTime,
+    CensusReport,
     dbcClient,
     DEFAULT_RPC,
     Evaluation,
@@ -51,6 +53,17 @@ const presetArg = z
     .describe(`A library template id (${LIBRARY_IDS.join(', ')}) or a full PresetSpec object (schema "${PRESET_SCHEMA}")`)
 
 const rpc = (n: Network) => new Connection(process.env[`LAUNCHPROOF_RPC_${n === 'devnet' ? 'DEVNET' : 'MAINNET'}`] ?? DEFAULT_RPC[n], 'confirmed')
+
+let publishedCensus: CensusReport | undefined
+function census(): CensusReport {
+    if (!publishedCensus) {
+        const file = new URL('../../../apps/web/public/census-mainnet-beta.json', import.meta.url)
+        const report = JSON.parse(fs.readFileSync(file, 'utf8')) as CensusReport
+        if (report.schema !== 'launchproof/census@1' || report.network !== 'mainnet-beta') throw new Error('Invalid published census')
+        publishedCensus = report
+    }
+    return publishedCensus
+}
 
 function toSpec(p: string | Record<string, unknown>): PresetSpec {
     if (typeof p === 'string') {
@@ -152,6 +165,33 @@ tool(
 )
 
 // ---- chain reads ------------------------------------------------------------------------------
+
+tool(
+    'get_state_of_dbc',
+    'Read the published mainnet DBC census headline counts, coverage, tail sample, and fee-claimer summary. This is a dated snapshot, not a live chain read.',
+    {},
+    () => {
+        const report = census()
+        return {
+            observedAt: report.observedAt, scope: report.scope, poolsObserved: report.pools,
+            configsReferenced: report.configs, poolsWithMigrationFlag: report.migrated,
+            directlyAuditedConfigs: report.auditedConfigs, directlyAuditedPools: report.auditedPools,
+            tail: report.tail, operators: report.operators, validation: report.validation,
+        }
+    }
+)
+
+tool(
+    'get_census_row',
+    'Look up a config in the published top-config mainnet census. Configs outside the published rows require audit_config for a live read.',
+    { address: z.string() },
+    ({ address }) => {
+        const key = new PublicKey(address).toBase58()
+        const report = census()
+        const row = report.rows.find((item) => item.address === key)
+        return row ? { observedAt: report.observedAt, row } : { observedAt: report.observedAt, address: key, included: false, note: 'Not in the published top-config rows. Use audit_config for a live config read.' }
+    }
+)
 
 tool(
     'audit_config',

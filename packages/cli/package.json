@@ -1,17 +1,17 @@
 {
-  "name": "@launchproof/cli",
+  "name": "launchproof",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "bin": {
-    "launchproof": "./src/index.ts"
+    "launchproof": "./dist/index.mjs"
   },
   "scripts": {
-    "start": "tsx src/index.ts",
-    "typecheck": "tsc --noEmit -p ."
+    "start": "node --import tsx src/index.ts",
+    "typecheck": "tsc --noEmit -p .",
+    "build": "node build.mjs",
+    "prepack": "node build.mjs"
   },
   "dependencies": {
-    "@launchproof/core": "workspace:*",
     "@meteora-ag/dynamic-bonding-curve-sdk": "1.5.13",
     "@solana/spl-token": "^0.4.15",
     "@solana/web3.js": "^1.99.0",
@@ -22,7 +22,30 @@
   "devDependencies": {
     "@types/bn.js": "^5.1.6",
     "@types/node": "^24.0.0",
+    "esbuild": "0.28.2",
     "tsx": "^4.20.0",
     "typescript": "5.9.3"
-  }
+  },
+  "description": "Read-only Meteora DBC census and config audit CLI with optional launch tools",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Sanchay117/Launchproof.git",
+    "directory": "packages/cli"
+  },
+  "keywords": [
+    "solana",
+    "meteora",
+    "dbc",
+    "bonding-curve",
+    "audit"
+  ]
 }

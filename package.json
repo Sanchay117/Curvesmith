@@ -1,5 +1,5 @@
 {
-  "name": "launchproof",
+  "name": "@launchproof/workspace",
   "private": true,
   "version": "0.1.0",
   "description": "Audit, census and launch toolkit for Meteora's Dynamic Bonding Curve",
@@ -14,8 +14,11 @@
     "build": "pnpm --filter @launchproof/web build",
     "test": "pnpm --filter @launchproof/core test",
     "typecheck": "pnpm -r typecheck",
-    "cli": "pnpm --filter @launchproof/cli exec tsx src/index.ts",
-    "snapshot": "pnpm --filter @launchproof/cli exec tsx src/index.ts snapshot",
-    "mcp": "pnpm --filter @launchproof/mcp exec tsx src/index.ts"
+    "cli": "pnpm --filter launchproof exec node --import tsx src/index.ts",
+    "snapshot": "pnpm --filter launchproof exec node --import tsx src/index.ts snapshot",
+    "mcp": "pnpm --filter @launchproof/mcp exec node --import tsx src/index.ts"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
   }
 }

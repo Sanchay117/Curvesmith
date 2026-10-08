@@ -7,7 +7,7 @@
     "launchproof-mcp": "./src/index.ts"
   },
   "scripts": {
-    "start": "tsx src/index.ts",
+    "start": "node --import tsx src/index.ts",
     "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {
