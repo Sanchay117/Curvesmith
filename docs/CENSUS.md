@@ -12,6 +12,7 @@ The report describes **observed existing standard VirtualPool accounts**, not ev
 4. Decode 200 sampled full pool accounts with the SDK and compare the config address and migration flag with the byte reader. Abort publication on a mismatch. This validates layout interpretation, not RPC completeness or historical counts.
 5. Read quote mint accounts for token precision. Recognize SOL/USDC by mint address. All other assets retain their mint identity; no SOL or USD value is invented.
 6. For the single-pool stratum, rank each config by SHA-256 of `launchproof-single-pool-v1:<address>` and select the first 3,000. This seeded hash ranking makes a reproducible uniform sample without relying on the RPC's account order. Fetch full config accounts in batches of 100, review them with the same policy, and record failures. Finding shares divide by successfully evaluated sampled configs. Two-sided 95% Wilson score intervals express sampling uncertainty only; failed reads, RPC omissions, and the account observation window can add bias. These are estimates for the single-pool stratum, not for all configs or all pools.
+7. Scan PoolConfig accounts once with the account discriminator and `dataSlice` offset 40, length 64. The first 32 bytes are `feeClaimer`; the next 32 are `leftoverReceiver`. Join addresses to the observed config counts. The resulting operator count is the number of distinct fee-claimer **addresses among matched configs**, not a count of people or named launchpads. The raw 42 MB compressed operator scan remains in the local cache; `verify-census --cache` checks its hash and recomputes the grouped counts.
 
 Two scans plus validation and config reads can take several minutes and download hundreds of MB. Full raw RPC responses are gzipped, hashed, and cached locally. `--resume` reuses completed requests and may extend the observation window; `--offline` performs no network requests and requires a complete archive. Use a fresh cache directory for a new census. The CLI verifies saved requests against the requested parameters.
 
@@ -19,7 +20,7 @@ Two scans plus validation and config reads can take several minutes and download
 
 | Check | Rule | Interpretation |
 | --- | --- | --- |
-| Initially unlocked LP | Partner + creator unlocked shares >50% | A majority can be withdrawn after migration; no withdrawal is inferred. |
+| Initially unlocked LP | Partner + creator unlocked shares >50% | A majority can be withdrawn after migration; no withdrawal is inferred. The report also shows each side separately. For unmigrated pools these are future configured terms. |
 | Residual supply | Estimated receiver allocation >5%; >50% is critical | Initial supply minus curve sale, migration allocation, vesting, and configured migration burn. Dynamic-supply buffers are burned, not assigned to a receiver. Actual balances and fees can differ. |
 | Mint authority | Config authority mode 3 or 4 | Additional issuance is permitted; it can be legitimate for externally backed assets. |
 | Migration fee | Configured fee >10% | Quote is allocated as a fee before liquidity is deposited. |
@@ -28,11 +29,11 @@ Two scans plus validation and config reads can take several minutes and download
 
 The report assigns **no blanket safety grade**. Studio lint scores are a separate design heuristic with scenario assumptions; they are not the report's policy. The report does not simulate every audited config. The top-N findings are observed-pool weighted; the single-pool sample estimates config shares only within that stratum.
 
-Headline finding percentages are **pool weighted among successfully audited configs**. Each row remains a config, not a launchpad. Config-count percentages, total observed pool coverage, and migration rates have different denominators. Categories overlap. An unflagged config is not a certified safe token.
+Headline finding percentages are **pool weighted among successfully audited configs**. Each row remains a config, not a launchpad. Config-count percentages, total observed pool coverage, and migration rates have different denominators. Categories overlap. Among reviewed pools with more than 50% LP initially unlocked, the creator side has the larger unlocked share in 575,710 of 893,724 pools (64.4%); the partner side leads in 315,187 (35.3%), and 2,827 tie. These describe migration terms, not observed withdrawals. An unflagged config is not a certified safe token.
 
 ## Evidence and receipts
 
-`census-mainnet-beta.json` records counts, scope, scan slots, SDK version, failures, policy outputs, tail estimates, and source hashes. Its companion `-evidence.json.gz` contains raw reviewed config bytes, sampled tail configs, and sampled full pool accounts. Run `pnpm cli verify-census apps/web/public/census-mainnet-beta.json --cache .cache/census-v1` to recompute the published reviews, intervals, and seeded sample selection. The much larger complete RPC archive remains in the selected cache directory. Reproduce aggregate counts with `--offline`; selected public config bytes alone cannot prove full-network totals.
+`census-mainnet-beta.json` records counts, scope, scan slots, SDK version, failures, policy outputs, tail estimates, operator aggregates, and source hashes. Its companion `-evidence.json.gz` contains raw reviewed config bytes, sampled tail configs, and sampled full pool accounts. Run `pnpm cli verify-census apps/web/public/census-mainnet-beta.json --cache .cache/census-v1` to recompute the published reviews, intervals, seeded sample selection, and operator aggregates. The much larger complete RPC archive remains in the selected cache directory. Reproduce aggregate counts with `--offline`; selected public config bytes alone cannot prove full-network totals.
 
 The live auditor offers an independent JSON receipt: config address, network, slot, fetch time, raw config bytes, hash, optional raw quote mint account, and policy outputs. Run:
 

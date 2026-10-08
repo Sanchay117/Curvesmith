@@ -42,6 +42,12 @@ export interface CensusReport {
     auditedPools: number
     failures: number
     validation: { checked: number; mismatches: number }
+    operators?: {
+        matchedConfigs: number
+        matchedPools: number
+        distinctFeeClaimers: number
+        top: Array<{ feeClaimer: string; configs: number; pools: number }>
+    }
     tail?: {
         populationConfigs: number
         populationPools: number

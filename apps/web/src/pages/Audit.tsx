@@ -110,11 +110,20 @@ export function Audit() {
                                     <RingMeter value={m.value} color={m.warn ? (m.value > 0.5 ? 'var(--critical)' : 'var(--serious)') : 'var(--good)'} size={96}>
                                         <CountUp value={m.value * 100} format={(v) => `${v.toFixed(0)}%`} className="text-lg font-semibold" />
                                     </RingMeter>
-                                    <div className="text-[15px] leading-snug font-medium">{m.label}</div>
+                                    <div>
+                                        <div className="text-[15px] leading-snug font-medium">{m.label}</div>
+                                        {n === 0 && (
+                                            <div className="mt-2 text-xs leading-relaxed text-ink-2">
+                                                Partner/launchpad side: {audit.partnerUnlockedLiquidityPct}%<br />
+                                                Creator side: {audit.creatorUnlockedLiquidityPct}%
+                                            </div>
+                                        )}
+                                    </div>
                                 </Card>
                             </Reveal>
                         ))}
                     </div>
+                    <p className="mt-2 text-xs text-muted">For pools that have not migrated, these LP percentages are configured terms that would apply at migration.</p>
                     <Reveal>
                         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
                             {[

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, test } from 'vitest'
 import { Connection } from '@solana/web3.js'
 import { createDbcProgram, PoolConfig } from '@meteora-ag/dynamic-bonding-curve-sdk'
-import { auditConfig, AuditReceipt, sha256, toHex, verifyAuditReceipt } from '../src'
+import { auditConfig, AuditReceipt, ConfigAudit, sha256, toHex, verifyAuditReceipt } from '../src'
 
 const snapshot = JSON.parse(readFileSync(new URL('../../../apps/web/public/registry-devnet.json', import.meta.url), 'utf8'))
 const { program } = createDbcProgram(new Connection('http://localhost:8899'))
@@ -31,5 +31,13 @@ describe('offline receipt verification', () => {
         const r = receipt()
         r.audit.unlockedLiquidityPct = 101
         expect(() => verifyAuditReceipt(r)).toThrow('do not reproduce')
+    })
+    test('accepts an earlier policy-1 receipt without the later LP split fields', () => {
+        const r = receipt()
+        const legacyAudit: Partial<ConfigAudit> = { ...r.audit }
+        delete legacyAudit.partnerUnlockedLiquidityPct
+        delete legacyAudit.creatorUnlockedLiquidityPct
+        const legacy = { ...r, audit: legacyAudit as ConfigAudit }
+        expect(verifyAuditReceipt(legacy)).toEqual(legacy.audit)
     })
 })

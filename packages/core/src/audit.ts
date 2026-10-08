@@ -20,6 +20,8 @@ export interface ConfigAudit {
     timeFeeDecay: boolean | null
     dynamicFee: boolean
     unlockedLiquidityPct: number
+    partnerUnlockedLiquidityPct: number
+    creatorUnlockedLiquidityPct: number
     permanentlyLockedLiquidityPct: number
     mintAuthorityRetained: boolean | null
     leftoverSupplyPct: number
@@ -74,6 +76,8 @@ export function auditConfig(config: PoolConfig, network: Network, mintDecimals?:
         feeMode: bf.baseFeeMode, openingFeeBps: bf.cliffFeeNumerator.toNumber() / 1e5,
         timeFeeDecay, dynamicFee: config.poolFees.dynamicFee.initialized === 1,
         unlockedLiquidityPct: unlocked,
+        partnerUnlockedLiquidityPct: config.partnerLiquidityPercentage,
+        creatorUnlockedLiquidityPct: config.creatorLiquidityPercentage,
         permanentlyLockedLiquidityPct: config.partnerPermanentLockedLiquidityPercentage + config.creatorPermanentLockedLiquidityPercentage,
         mintAuthorityRetained: retainsMint, leftoverSupplyPct: leftoverPct,
         migrationFeePct: config.migrationFeePercentage,

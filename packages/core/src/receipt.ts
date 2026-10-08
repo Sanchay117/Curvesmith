@@ -36,6 +36,11 @@ export function verifyAuditReceipt(receipt: AuditReceipt): ConfigAudit {
         }, owner).decimals
     }
     const reproduced = auditConfig(config, receipt.network, decimals)
+    // Early @1 receipts preceded the partner/creator LP breakdown. Their other fields are unchanged.
+    if (!('partnerUnlockedLiquidityPct' in receipt.audit) && !('creatorUnlockedLiquidityPct' in receipt.audit)) {
+        delete (reproduced as Partial<ConfigAudit>).partnerUnlockedLiquidityPct
+        delete (reproduced as Partial<ConfigAudit>).creatorUnlockedLiquidityPct
+    }
     if (JSON.stringify(reproduced) !== JSON.stringify(receipt.audit)) throw new Error('Audit findings do not reproduce under the recorded policy')
     return reproduced
 }

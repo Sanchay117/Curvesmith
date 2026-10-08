@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'vitest'
-import { PublicKey } from '@solana/web3.js'
+import { readFileSync } from 'node:fs'
+import { Connection, PublicKey } from '@solana/web3.js'
+import { createDbcProgram, PoolConfig } from '@meteora-ag/dynamic-bonding-curve-sdk'
 import BN from 'bn.js'
 import { auditConfig, compilePreset, countPoolObservations, defaultPreset, deriveConfigState, QUOTE_ASSETS, readPoolCensusFields, residualSupply, specFromConfig } from '../src'
 
@@ -58,6 +60,14 @@ describe('configuration audit', () => {
 })
 
 describe('census accounting', () => {
+    test('reads fee claimer and leftover receiver from the verified config slice', () => {
+        const snapshot = JSON.parse(readFileSync(new URL('../../../apps/web/public/registry-devnet.json', import.meta.url), 'utf8'))
+        const bytes = Buffer.from(snapshot.listings[0].data, 'base64')
+        const { program } = createDbcProgram(new Connection('http://localhost:8899'))
+        const decoded = program.coder.accounts.decode('poolConfig', bytes) as PoolConfig
+        expect(new PublicKey(bytes.subarray(40, 72)).toBase58()).toBe(decoded.feeClaimer.toBase58())
+        expect(new PublicKey(bytes.subarray(72, 104)).toBase58()).toBe(decoded.leftoverReceiver.toBase58())
+    })
     test('counts migrating pools once and preserves the latest status', () => {
         const result = countPoolObservations([
             { pool: 'p1', config: 'a', migrated: false }, { pool: 'p2', config: 'a', migrated: false },

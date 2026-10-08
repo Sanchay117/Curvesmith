@@ -255,6 +255,10 @@ export function Report() {
     const report = useCensus()
     const data = report.data
     const reviewed = data?.rows.filter((r) => r.audit) ?? []
+    const majorityUnlocked = reviewed.filter((row) => row.audit!.unlockedLiquidityPct > 50)
+    const majorityUnlockedPools = majorityUnlocked.reduce((sum, row) => sum + row.pools, 0)
+    const creatorDominantPools = majorityUnlocked.filter((row) => row.audit!.creatorUnlockedLiquidityPct > row.audit!.partnerUnlockedLiquidityPct).reduce((sum, row) => sum + row.pools, 0)
+    const partnerDominantPools = majorityUnlocked.filter((row) => row.audit!.partnerUnlockedLiquidityPct > row.audit!.creatorUnlockedLiquidityPct).reduce((sum, row) => sum + row.pools, 0)
     return (
         <div>
             {/* hero */}
@@ -366,8 +370,34 @@ export function Report() {
                             <p className="mt-4 text-xs text-muted">
                                 Weighted by observed pool count. A pool can appear in more than one group. These are permissions in the config, not observed behaviour.
                             </p>
+                            <p className="mt-2 text-sm text-ink-2">
+                                Among {count(majorityUnlockedPools)} reviewed pools with majority LP initially unlocked, the creator side has the larger unlocked share in {count(creatorDominantPools)} ({percent(creatorDominantPools, majorityUnlockedPools)}), and the partner/launchpad side in {count(partnerDominantPools)} ({percent(partnerDominantPools, majorityUnlockedPools)}). Ties make up the remainder. For unmigrated pools, these terms would apply at migration.
+                            </p>
                         </Reveal>
                     </section>
+
+                    {data.operators && (
+                        <section className="mt-20">
+                            <Reveal>
+                                <h2 className="text-2xl font-semibold tracking-tight">Who is listed as fee claimer?</h2>
+                                <p className="mt-2 text-sm text-ink-2">{count(data.operators.distinctFeeClaimers)} distinct fee-claimer addresses appear in configs behind {count(data.operators.matchedPools)} observed pools ({percent(data.operators.matchedPools, data.pools)}). This groups on-chain addresses, not verified launchpad identities.</p>
+                            </Reveal>
+                            <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                                {data.operators.top.slice(0, 8).map((operator) => (
+                                    <div key={operator.feeClaimer} className="rounded-xl border border-line bg-surface p-3">
+                                        <div className="flex items-center justify-between gap-2 text-xs">
+                                            <span className="font-mono text-ink-2" title={operator.feeClaimer}>{short(operator.feeClaimer)}</span>
+                                            <span className="tnum text-ink">{count(operator.pools)} pools</span>
+                                        </div>
+                                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-3">
+                                            <div className="h-full rounded-full bg-accent" style={{ width: `${100 * operator.pools / data.operators!.top[0].pools}%` }} />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <p className="mt-2 text-xs text-muted">Counts join current config accounts to the observed pool scan. Missing or closed configs are excluded from the matched total.</p>
+                        </section>
+                    )}
 
                     {/* table */}
                     <div className="mt-20">

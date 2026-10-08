@@ -42,6 +42,33 @@ function tailFindings(rows: CensusRow[]) {
     })
 }
 
+function summarizeOperators(rows: CensusRow[], records: PoolRecord[]): NonNullable<CensusReport['operators']> {
+    const counts = new Map(rows.map((row) => [row.address, row]))
+    const seen = new Set<string>()
+    const operators = new Map<string, { configs: number; pools: number }>()
+    let matchedConfigs = 0
+    let matchedPools = 0
+    for (const record of records) {
+        if (seen.has(record.pubkey)) throw new Error(`Duplicate config account ${record.pubkey}`)
+        seen.add(record.pubkey)
+        const row = counts.get(record.pubkey)
+        if (!row) continue
+        if (record.account.owner !== DBC_PROGRAM_ID.toBase58()) throw new Error('Unexpected config owner')
+        const bytes = Buffer.from(record.account.data[0], 'base64')
+        if (bytes.length !== 64) throw new Error('Unexpected operator data slice length')
+        const feeClaimer = new PublicKey(bytes.subarray(0, 32)).toBase58()
+        const current = operators.get(feeClaimer) ?? { configs: 0, pools: 0 }
+        current.configs++
+        current.pools += row.pools
+        operators.set(feeClaimer, current)
+        matchedConfigs++
+        matchedPools += row.pools
+    }
+    const top = [...operators].map(([feeClaimer, value]) => ({ feeClaimer, ...value }))
+        .sort((a, b) => b.pools - a.pools || a.feeClaimer.localeCompare(b.feeClaimer)).slice(0, 12)
+    return { matchedConfigs, matchedPools, distinctFeeClaimers: operators.size, top }
+}
+
 export interface CensusOptions { out: string; cache: string; limit: number; tailSample: number; resume?: boolean; offline?: boolean }
 
 export async function buildCensus(rpcUrl: string, network: Network, options: CensusOptions) {
@@ -129,6 +156,13 @@ export async function buildCensus(rpcUrl: string, network: Network, options: Cen
     const singletons = rows.filter((row) => row.pools === 1)
     const tail = selectTail(rows, Math.min(options.tailSample, singletons.length), TAIL_SEED)
     fs.writeFileSync(path.join(cache, 'all-config-counts.json.gz'), gzipSync(JSON.stringify(rows)))
+    const operatorScan = await request<PoolRecord[]>('config-operators', 'getProgramAccounts', [DBC_PROGRAM_ID.toBase58(), {
+        encoding: 'base64', commitment: 'finalized', withContext: true,
+        dataSlice: { offset: 40, length: 64 },
+        filters: [{ memcmp: { offset: 0, bytes: '5RKzUGPpkkA' } }],
+    }])
+    if (!operatorScan.value.length) throw new Error('Empty config operator scan')
+    const operators = summarizeOperators(rows, operatorScan.value)
 
     let checked = 0
     const samples: Array<{ address: string; data: string }> = []
@@ -228,6 +262,7 @@ export async function buildCensus(rpcUrl: string, network: Network, options: Cen
         scope: 'Existing standard VirtualPool accounts observed across two finalized scans. Excludes transfer-hook pools and closed accounts. This is an observation window, not a historical launch count or a single-slot snapshot. Migration is a program flag, not evidence of users, demand, volume, or misconduct.',
         duplicateObservations: duplicates, auditedConfigs: audited.length, auditedPools: audited.reduce((n, r) => n + r.pools, 0),
         failures: top.length - audited.length, validation: { checked, mismatches: 0 }, evidence, rows: top,
+        operators,
         tail: {
             populationConfigs: singletons.length, populationPools: singletons.length,
             sampleSize: tail.length, evaluated: tailReviewed.length, failures: tail.length - tailReviewed.length,
@@ -315,6 +350,15 @@ export function verifyCensus(reportPath: string, cachePath?: string) {
         if (reviews.length !== report.tail.evaluated || report.tail.failures !== report.tail.sampleSize - reviews.length) throw new Error('Tail review counts differ')
         if (JSON.stringify(tailFindings(reviews)) !== JSON.stringify(report.tail.findings)) throw new Error('Tail finding estimates differ')
     }
+    if (report.operators && cachePath) {
+        const counts = JSON.parse(gunzipSync(fs.readFileSync(path.join(cachePath, 'all-config-counts.json.gz'))).toString()) as CensusRow[]
+        const file = path.join(cachePath, 'config-operators.json.gz')
+        const packedScan = fs.readFileSync(file)
+        const expectedScan = report.evidence.find((entry) => entry.file === path.basename(file))
+        if (!expectedScan || hash(packedScan) !== expectedScan.sha256) throw new Error('Operator scan hash mismatch')
+        const scan = JSON.parse(gunzipSync(packedScan).toString()) as { result: RpcResult<PoolRecord[]> }
+        if (JSON.stringify(summarizeOperators(counts, scan.result.value)) !== JSON.stringify(report.operators)) throw new Error('Operator aggregates differ')
+    }
     if (verified !== report.auditedConfigs || evidence.samples.length !== report.validation.checked) throw new Error('Verification counts differ')
-    console.log(`Verified ${verified} top config reviews, ${report.tail?.evaluated ?? 0} sampled tail reviews, and ${evidence.samples.length} pool layouts. Full-network totals require replaying the raw scan archive; chain inclusion is not proven.`)
+    console.log(`Verified ${verified} top config reviews, ${report.tail?.evaluated ?? 0} sampled tail reviews, ${evidence.samples.length} pool layouts${report.operators && cachePath ? ', and fee-claimer aggregates' : ''}. Full-network totals require replaying the raw scan archive; chain inclusion is not proven.`)
 }
