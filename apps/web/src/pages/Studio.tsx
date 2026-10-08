@@ -11,7 +11,7 @@ import {
     PRESET_SCHEMA,
     PresetSpec,
     resolveEndMcap,
-} from '@curvesmith/core'
+} from '@launchproof/core'
 import { Controls } from '../components/studio/Controls'
 import { PublishPanel } from '../components/studio/PublishPanel'
 import { CurveChart, EconomicsGrid, FeeChart, LintPanel, LiquidityBar, Panel, SimulationPanel, SupplyBar } from '../components/PresetViews'
@@ -164,7 +164,7 @@ export function Studio() {
         const blob = new Blob([JSON.stringify(spec, null, 2)], { type: 'application/json' })
         const a = document.createElement('a')
         a.href = URL.createObjectURL(blob)
-        a.download = `${spec.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'preset'}.curvesmith.json`
+        a.download = `${spec.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'preset'}.launchproof.json`
         a.click()
         URL.revokeObjectURL(a.href)
     }
@@ -173,7 +173,7 @@ export function Studio() {
         file.text().then((t) => {
             try {
                 const s = JSON.parse(t)
-                if (s?.schema !== PRESET_SCHEMA) throw new Error('not a Curvesmith preset')
+                if (s?.schema !== PRESET_SCHEMA) throw new Error('not a Launchproof preset')
                 setSpec(s)
             } catch (e) {
                 toast({ kind: 'error', title: 'Import failed', body: (e as Error).message })

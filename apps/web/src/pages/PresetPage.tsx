@@ -10,7 +10,7 @@ import {
     LIBRARY,
     PresetStats,
     specFromConfig,
-} from '@curvesmith/core'
+} from '@launchproof/core'
 import { CurveChart, EconomicsGrid, FeeChart, LintPanel, LiquidityBar, Panel, SimulationPanel, SupplyBar } from '../components/PresetViews'
 import { Address, Badge, Button, Card, Empty, GradeBadge, Progress, Segmented, Skeleton, Stat } from '../components/ui'
 import { CATEGORY_LABEL } from '../components/PresetCard'
@@ -163,7 +163,7 @@ function Launches({ stats, quote }: { stats: PresetStats | undefined; quote: str
 /** /p/:config: a listed preset, or any DBC config pasted by address. */
 export function PresetPage() {
     const { config } = useParams()
-    const { network } = useNetwork()
+    const { network, setNetwork } = useNetwork()
     const { connection } = useConnection()
     const { listing, isLoading } = useListing(config)
     const stats = usePresetStats(listing)
@@ -192,7 +192,19 @@ export function PresetPage() {
     )
 
     if (isLoading || (!listing && raw.isLoading)) return <Skeleton className="h-96" />
-    if (!listing && raw.error) return <Empty title="Preset not found">{(raw.error as Error).message}</Empty>
+    if (!listing && raw.error) {
+        const other = network === 'devnet' ? 'mainnet-beta' : 'devnet'
+        return (
+            <Empty title="Preset not found">
+                {(raw.error as Error).message} on {network === 'devnet' ? 'devnet' : 'mainnet'}.
+                <div className="mt-3">
+                    <Button size="sm" onClick={() => setNetwork(other)}>
+                        Look on {other === 'devnet' ? 'devnet' : 'mainnet'}
+                    </Button>
+                </div>
+            </Empty>
+        )
+    }
 
     const quote = ev && !(ev instanceof Error) ? ev.analyzed.spec.quote : 'SOL'
     const s = stats.data ?? undefined
@@ -206,7 +218,7 @@ export function PresetPage() {
         <div>
             <Header
                 title={listing?.meta.n ?? 'Unlisted DBC config'}
-                tagline={listing?.meta.t ?? 'Read straight from chain. Not listed in the Curvesmith registry.'}
+                tagline={listing?.meta.t ?? 'Read straight from chain. Not listed in the Launchproof registry.'}
                 description={listing?.meta.d}
                 category={listing?.meta.g ?? 'experimental'}
                 tags={listing?.meta.k ?? []}

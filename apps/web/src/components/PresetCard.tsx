@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Evaluation, PresetCategory } from '@curvesmith/core'
+import { Evaluation, PresetCategory } from '@launchproof/core'
 import { Sparkline } from './charts/LineChart'
 import { Badge, GradeBadge, Skeleton } from './ui'
 import { bps, num } from '../lib/format'

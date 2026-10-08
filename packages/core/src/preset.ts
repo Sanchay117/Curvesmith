@@ -47,7 +47,7 @@ export interface LpVesting {
 }
 
 export interface PresetSpec {
-    schema: 'curvesmith/preset@1'
+    schema: 'launchproof/preset@1'
     name: string
     tagline: string
     description: string
@@ -139,7 +139,7 @@ export interface PresetSpec {
     }
 }
 
-export const PRESET_SCHEMA = 'curvesmith/preset@1' as const
+export const PRESET_SCHEMA = 'launchproof/preset@1' as const
 
 export function lpTotal(spec: PresetSpec): number {
     const { partner, creator } = spec.lp

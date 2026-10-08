@@ -37,7 +37,7 @@ function Logo() {
                 <path d="M6 25 C 12 24, 15 20, 17 14 S 22 7, 26 7" fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" />
                 <circle cx="26" cy="7" r="2.6" fill="var(--s4)" />
             </svg>
-            <span className="hidden text-[17px] font-semibold tracking-tight sm:inline">Curvesmith</span>
+            <span className="hidden text-[17px] font-semibold tracking-tight sm:inline">Launchproof</span>
         </Link>
     )
 }

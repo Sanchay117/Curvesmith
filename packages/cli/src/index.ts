@@ -1,15 +1,15 @@
 #!/usr/bin/env tsx
 /**
- * curvesmith: the Curvesmith toolkit from a terminal.
+ * launchproof: the Launchproof toolkit from a terminal.
  *
- *   curvesmith presets                       list library templates
- *   curvesmith inspect <template|file|config> analyze, simulate and lint a preset
- *   curvesmith publish <template|file>       create the DBC config and list it (CSR-1)
- *   curvesmith list                          read the on-chain registry
- *   curvesmith launch <config> --name --symbol [--buy 0.1]
- *   curvesmith buy <pool> <amount> | sell <pool> <amount|all>
- *   curvesmith status <pool> | graduate <pool> | claim <pool>
- *   curvesmith keeper                        graduate every completed pool of listed presets
+ *   launchproof presets                       list library templates
+ *   launchproof inspect <template|file|config> analyze, simulate and lint a preset
+ *   launchproof publish <template|file>       create the DBC config and list it (CSR-1)
+ *   launchproof list                          read the on-chain registry
+ *   launchproof launch <config> --name --symbol [--buy 0.1]
+ *   launchproof buy <pool> <amount> | sell <pool> <amount|all>
+ *   launchproof status <pool> | graduate <pool> | claim <pool>
+ *   launchproof keeper                        graduate every completed pool of listed presets
  */
 import fs from 'node:fs'
 import os from 'node:os'
@@ -54,7 +54,7 @@ import {
     simulate,
     specFromConfig,
     withRetry,
-} from '@curvesmith/core'
+} from '@launchproof/core'
 
 // ---------------------------------------------------------------------------------------
 // plumbing
@@ -68,7 +68,7 @@ interface Ctx {
 
 const program = new Command()
 program
-    .name('curvesmith')
+    .name('launchproof')
     .description('Design, simulate, publish and launch Meteora DBC presets')
     .option('-n, --network <network>', 'devnet or mainnet-beta', 'devnet')
     .option('-u, --rpc <url>', 'RPC endpoint (defaults to the public one for the network)')
@@ -87,7 +87,7 @@ function ctx(): Ctx {
 }
 
 function signer(c: Ctx): Keypair {
-    if (!fs.existsSync(c.keypairPath)) throw new Error(`no keypair at ${c.keypairPath}. Run "curvesmith keygen" first.`)
+    if (!fs.existsSync(c.keypairPath)) throw new Error(`no keypair at ${c.keypairPath}. Run "launchproof keygen" first.`)
     return Keypair.fromSecretKey(Uint8Array.from(JSON.parse(fs.readFileSync(c.keypairPath, 'utf8'))))
 }
 

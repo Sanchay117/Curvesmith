@@ -1,5 +1,5 @@
 /**
- * Differential tests: Curvesmith's off-chain model vs the real DBC program binary.
+ * Differential tests: Launchproof's off-chain model vs the real DBC program binary.
  *
  * 1. Parity: `deriveConfigState(compilePreset(spec))` must equal, field for field, the
  *    PoolConfig account the program writes for the same parameters.
@@ -147,7 +147,7 @@ describe('dynamic-supply configs (how most launchpads deploy)', () => {
     })
 })
 
-describe('differential: Curvesmith model vs real DBC program (LiteSVM)', () => {
+describe('differential: Launchproof model vs real DBC program (LiteSVM)', () => {
     for (const [name, spec] of variants()) {
         test(`config parity + swap replay: ${name}`, async () => {
             const env = new Svm()

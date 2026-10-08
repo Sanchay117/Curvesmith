@@ -1,17 +1,17 @@
 {
-  "name": "@curvesmith/mcp",
+  "name": "@launchproof/mcp",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "bin": {
-    "curvesmith-mcp": "./src/index.ts"
+    "launchproof-mcp": "./src/index.ts"
   },
   "scripts": {
     "start": "tsx src/index.ts",
     "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {
-    "@curvesmith/core": "workspace:*",
+    "@launchproof/core": "workspace:*",
     "@meteora-ag/dynamic-bonding-curve-sdk": "1.5.13",
     "@modelcontextprotocol/sdk": "^1.32.0",
     "@solana/web3.js": "^1.99.0",

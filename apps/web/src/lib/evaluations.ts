@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Evaluation, evaluateConfig, evaluatePreset, LIBRARY, Listing, Network, PresetSpec, specFromConfig } from '@curvesmith/core'
+import { Evaluation, evaluateConfig, evaluatePreset, LIBRARY, Listing, Network, PresetSpec, specFromConfig } from '@launchproof/core'
 
 /**
  * Evaluations (analysis + 2 simulations + lint) cost ~20-60ms each. Cache them by key so

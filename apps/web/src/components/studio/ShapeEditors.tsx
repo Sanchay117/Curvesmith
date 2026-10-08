@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { CurveKind, CurveShape } from '@curvesmith/core'
+import { CurveKind, CurveShape } from '@launchproof/core'
 import { cx, NumberInput } from '../ui'
 import { num } from '../../lib/format'
 

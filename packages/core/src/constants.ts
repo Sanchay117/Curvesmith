@@ -9,9 +9,11 @@ export const DAMM_V2_PROGRAM_ID = new PublicKey('cpamdpZCGKUy5JxQXB4dcpGPiikHawv
 export const MEMO_PROGRAM_ID = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr')
 
 /**
- * Curvesmith Registry address (CSR-1).
+ * Curve Spec Registry address (CSR-1).
  *
- * Nobody holds a key for this address: it is sha256("curvesmith:registry:v1").
+ * Nobody holds a key for this address: it is sha256("curvesmith:registry:v1"). The seed keeps
+ * the project's working name on purpose: changing it would move the registry and orphan every
+ * existing listing.
  * Every preset listing transaction references it, so `getSignaturesForAddress(REGISTRY_ADDRESS)`
  * enumerates the whole marketplace without any indexer or custom program.
  */

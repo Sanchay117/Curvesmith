@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQueries } from '@tanstack/react-query'
 import { useConnection } from '@solana/wallet-adapter-react'
-import { LIBRARY, LIBRARY_IDS, Listing, PresetCategory } from '@curvesmith/core'
+import { PublicKey } from '@solana/web3.js'
+import { LIBRARY, LIBRARY_IDS, Listing, PresetCategory } from '@launchproof/core'
 import { PresetCard, CATEGORY_LABEL } from '../components/PresetCard'
 import { Button, cx, Empty, Skeleton, TextInput } from '../components/ui'
 import { statsQuery, useListings, usePresetStats, useSnapshot } from '../lib/queries'
@@ -57,6 +58,17 @@ function TemplateCard({ id }: { id: string }) {
 
 const CATEGORIES: Array<PresetCategory | 'all'> = ['all', 'meme', 'community', 'rwa', 'equity', 'ai', 'creator', 'experimental']
 
+/** The search box doubles as the config auditor: a pasted address opens that config's review. */
+function asAddress(q: string): string | null {
+    const s = q.trim()
+    if (s.length < 32 || s.length > 44) return null
+    try {
+        return new PublicKey(s).toBase58()
+    } catch {
+        return null
+    }
+}
+
 export function Marketplace() {
     const { network, rpcUrl } = useNetwork()
     const { connection } = useConnection()
@@ -74,6 +86,7 @@ export function Marketplace() {
         [listings.data, cat, q]
     )
     const templates = LIBRARY_IDS.filter((id) => match(LIBRARY[id].name, LIBRARY[id].tagline, LIBRARY[id].category, LIBRARY[id].tags))
+    const address = asAddress(q)
 
     // aggregate stats share their cache with the cards (same query keys)
     const snapshot = useSnapshot()
@@ -104,7 +117,7 @@ export function Marketplace() {
                         designed and proven.
                     </h1>
                     <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-ink-2">
-                        Curvesmith turns DBC configs into products. Design a curve, simulate it against bots and crowds with the program's exact
+                        Launchproof turns DBC configs into products. Design a curve, simulate it against bots and crowds with the program's exact
                         math, publish it on-chain, and earn the partner fees of every token that launches from it.
                     </p>
                     <div className="mt-6 flex flex-wrap gap-2">
@@ -145,52 +158,72 @@ export function Marketplace() {
                         {c === 'all' ? 'All' : CATEGORY_LABEL[c]}
                     </button>
                 ))}
-                <div className="ml-auto w-full sm:w-64">
-                    <TextInput placeholder="Search presets" value={q} onChange={(e) => setQ(e.target.value)} />
+                <div className="ml-auto w-full sm:w-80">
+                    <TextInput placeholder="Search presets, or paste any DBC config" value={q} onChange={(e) => setQ(e.target.value)} />
                 </div>
             </div>
 
-            <section className="mb-12">
-                <div className="mb-4 flex items-baseline justify-between">
-                    <h2 className="text-xl font-semibold">Live on {network === 'devnet' ? 'devnet' : 'mainnet'}</h2>
-                    <span className="text-xs text-muted">
-                        {listings.isPlaceholderData && snapshot
-                            ? `Showing a registry snapshot from ${ago(snapshot.generatedAt)} while live chain data loads.`
-                            : "Read from the CSR-1 on-chain registry. Only a config's fee claimer can list it."}
-                    </span>
-                </div>
-                {listings.isLoading ? (
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        {[0, 1, 2].map((i) => (
-                            <Skeleton key={i} className="h-64" />
-                        ))}
+            {address && (
+                <Link
+                    to={`/p/${address}`}
+                    className="mb-8 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-accent bg-accent-wash px-5 py-4 hover:bg-surface-2"
+                >
+                    <div className="min-w-0">
+                        <div className="text-sm font-semibold">Audit this DBC config</div>
+                        <div className="mt-0.5 truncate font-mono text-[13px] text-ink-2">{address}</div>
+                        <div className="mt-0.5 text-xs text-muted">
+                            Any launchpad's config on {network === 'devnet' ? 'devnet' : 'mainnet'}: economics, simulation and a launch review, read straight from chain.
+                        </div>
                     </div>
-                ) : listings.error ? (
-                    <Empty title="Could not read the registry">
-                        {(listings.error as Error).message}. Public RPCs rate-limit; set your own endpoint from the network menu.
-                    </Empty>
-                ) : live.length === 0 ? (
-                    <Empty title="No live presets match">Publish one from the Studio, or start from a template below.</Empty>
-                ) : (
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        {live.map((l) => (
-                            <ListingCard key={`${l.config.toBase58()}:${l.author.toBase58()}`} l={l} />
-                        ))}
-                    </div>
-                )}
-            </section>
+                    <span className="inline-flex h-9 items-center rounded-[10px] bg-accent px-3.5 text-sm font-semibold text-accent-ink">Audit config</span>
+                </Link>
+            )}
 
-            <section>
-                <div className="mb-4 flex items-baseline justify-between">
-                    <h2 className="text-xl font-semibold">Template library</h2>
-                    <span className="text-xs text-muted">Each one shows off a different DBC capability. Fork, tune, publish.</span>
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {templates.map((id) => (
-                        <TemplateCard key={id} id={id} />
-                    ))}
-                </div>
-            </section>
+            {!address && (
+                <>
+                    <section className="mb-12">
+                        <div className="mb-4 flex items-baseline justify-between">
+                            <h2 className="text-xl font-semibold">Live on {network === 'devnet' ? 'devnet' : 'mainnet'}</h2>
+                            <span className="text-xs text-muted">
+                                {listings.isPlaceholderData && snapshot
+                                    ? `Showing a registry snapshot from ${ago(snapshot.generatedAt)} while live chain data loads.`
+                                    : "Read from the CSR-1 on-chain registry. Only a config's fee claimer can list it."}
+                            </span>
+                        </div>
+                        {listings.isLoading ? (
+                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                {[0, 1, 2].map((i) => (
+                                    <Skeleton key={i} className="h-64" />
+                                ))}
+                            </div>
+                        ) : listings.error ? (
+                            <Empty title="Could not read the registry">
+                                {(listings.error as Error).message}. Public RPCs rate-limit; set your own endpoint from the network menu.
+                            </Empty>
+                        ) : live.length === 0 ? (
+                            <Empty title="No live presets match">Publish one from the Studio, or start from a template below.</Empty>
+                        ) : (
+                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                {live.map((l) => (
+                                    <ListingCard key={`${l.config.toBase58()}:${l.author.toBase58()}`} l={l} />
+                                ))}
+                            </div>
+                        )}
+                    </section>
+
+                    <section>
+                        <div className="mb-4 flex items-baseline justify-between">
+                            <h2 className="text-xl font-semibold">Template library</h2>
+                            <span className="text-xs text-muted">Each one shows off a different DBC capability. Fork, tune, publish.</span>
+                        </div>
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                            {templates.map((id) => (
+                                <TemplateCard key={id} id={id} />
+                            ))}
+                        </div>
+                    </section>
+                </>
+            )}
         </div>
     )
 }

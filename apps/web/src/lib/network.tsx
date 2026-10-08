@@ -1,5 +1,5 @@
 import { createContext, ReactNode, useContext, useMemo, useState } from 'react'
-import { DEFAULT_RPC, Network } from '@curvesmith/core'
+import { DEFAULT_RPC, Network } from '@launchproof/core'
 
 interface NetworkState {
     network: Network
@@ -9,6 +9,14 @@ interface NetworkState {
 }
 
 const Ctx = createContext<NetworkState | null>(null)
+
+// api.mainnet-beta.solana.com rejects any request carrying a browser Origin (403), so the web app
+// defaults to PublicNode's free CORS endpoint on mainnet. It serves account reads and the
+// registry scan; getProgramAccounts (token stats, Earnings) needs a custom endpoint.
+const BROWSER_RPC: Record<Network, string> = {
+    devnet: DEFAULT_RPC.devnet,
+    'mainnet-beta': 'https://solana-rpc.publicnode.com',
+}
 
 const read = (k: string) => {
     try {
@@ -38,7 +46,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
     const value = useMemo<NetworkState>(
         () => ({
             network,
-            rpcUrl: custom || import.meta.env[`VITE_RPC_${network === 'devnet' ? 'DEVNET' : 'MAINNET'}`] || DEFAULT_RPC[network],
+            rpcUrl: custom || import.meta.env[`VITE_RPC_${network === 'devnet' ? 'DEVNET' : 'MAINNET'}`] || BROWSER_RPC[network],
             setNetwork: (n) => {
                 write('cs.network', n)
                 setNetworkState(n)

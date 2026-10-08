@@ -1,5 +1,5 @@
 import { ButtonHTMLAttributes, ReactNode, useState } from 'react'
-import { explorerUrl, Network, Severity } from '@curvesmith/core'
+import { explorerUrl, Network, Severity } from '@launchproof/core'
 import { short } from '../lib/format'
 
 export function cx(...xs: (string | false | null | undefined)[]) {

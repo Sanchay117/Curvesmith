@@ -17,7 +17,7 @@ import {
     quoteAssetByMint,
     quoteSwap,
     specFromConfig,
-} from '@curvesmith/core'
+} from '@launchproof/core'
 import { CurveChart, Panel } from '../components/PresetViews'
 import { Address, Button, Card, Empty, Field, NumberInput, Progress, Segmented, Skeleton, Stat } from '../components/ui'
 import { useChainClock, useListing, usePool, useSolBalance, useTokenBalance, useTokenMetas } from '../lib/queries'
@@ -275,7 +275,7 @@ export function TokenPage() {
     const { network } = useNetwork()
     const snap = usePool(pool)
     const config = snap.data?.configAddress.toBase58()
-    const { listing } = useListing(config)
+    const { listing, isLoading: listingLoading } = useListing(config)
     const metas = useTokenMetas(snap.data ? [snap.data.pool.poolState.baseMint] : [])
 
     const analyzed = useMemo(() => {
@@ -310,7 +310,7 @@ export function TokenPage() {
                     <div className="text-[13px] text-muted">
                         Launched from{' '}
                         <Link to={`/p/${config}`} className="font-medium text-ink-2 hover:text-accent">
-                            {listing?.meta.n ?? 'a DBC config'}
+                            {listing?.meta.n ?? (listingLoading ? '...' : 'a DBC config')}
                         </Link>
                     </div>
                     <h1 className="mt-1 text-3xl font-semibold tracking-tight">

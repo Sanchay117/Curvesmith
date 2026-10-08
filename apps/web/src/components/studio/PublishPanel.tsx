@@ -13,7 +13,7 @@ import {
     listingMetaFromSpec,
     PresetSpec,
     QUOTE_ASSETS,
-} from '@curvesmith/core'
+} from '@launchproof/core'
 import { Button } from '../ui'
 import { useNetwork } from '../../lib/network'
 import { useToast } from '../../lib/toast'

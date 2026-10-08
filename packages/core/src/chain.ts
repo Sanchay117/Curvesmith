@@ -1,5 +1,5 @@
 /**
- * Thin, typed wrappers over the DBC SDK for every on-chain action Curvesmith performs.
+ * Thin, typed wrappers over the DBC SDK for every on-chain action Launchproof performs.
  * Each builder returns unsigned transactions plus any keypairs that must co-sign, so the
  * same code serves the browser wallet, the CLI and the MCP server.
  */
@@ -178,7 +178,7 @@ export async function chainTime(connection: Connection): Promise<{ unix: number;
 }
 
 /**
- * Quote with Curvesmith's SimPool (same math as the program) seeded from live state, so the
+ * Quote with Launchproof's SimPool (same math as the program) seeded from live state, so the
  * UI preview and the simulator share one code path.
  */
 export function quoteSwap(snap: PoolSnapshot, side: 'buy' | 'sell', amountIn: BN, now: { unix: number; slot: number }) {

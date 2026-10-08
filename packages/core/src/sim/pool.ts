@@ -306,7 +306,7 @@ function cloneTracker(vt: VirtualPool['poolState']['volatilityTracker']) {
 
 /**
  * `PoolConfig::get_initial_base_supply`: the tokens minted into the pool at launch.
- * Curvesmith presets compile to fixed supply; the dynamic branch serves other launchpads'
+ * Launchproof presets compile to fixed supply; the dynamic branch serves other launchpads'
  * configs (swap amount plus a 25% buffer capped at the curve's capacity, plus graduation
  * liquidity and vesting).
  */

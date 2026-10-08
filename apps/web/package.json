@@ -1,5 +1,5 @@
 {
-  "name": "@curvesmith/web",
+  "name": "@launchproof/web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {
-    "@curvesmith/core": "workspace:*",
+    "@launchproof/core": "workspace:*",
     "@meteora-ag/dynamic-bonding-curve-sdk": "1.5.13",
     "@solana/spl-token": "^0.4.15",
     "@solana/wallet-adapter-base": "^0.9.28",

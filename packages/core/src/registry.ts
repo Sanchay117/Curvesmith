@@ -1,5 +1,5 @@
 /**
- * CSR-1: the Curvesmith Registry. A marketplace index that lives entirely on Solana.
+ * CSR-1: the Curve Spec Registry. A marketplace index that lives entirely on Solana.
  *
  * Listing a preset = one small transaction signed by the preset's author with:
  *   1. an SPL Memo `csr1:{json}` carrying the design intent (name, story, curve shape), and

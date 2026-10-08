@@ -18,12 +18,12 @@ import {
     specFromConfig,
     statsFromSnapshot,
     withRetry,
-} from '@curvesmith/core'
+} from '@launchproof/core'
 import { useEffect, useMemo, useState } from 'react'
 import { useNetwork } from './network'
 
 /**
- * The static registry snapshot shipped with the build (written by `curvesmith snapshot`).
+ * The static registry snapshot shipped with the build (written by `launchproof snapshot`).
  * Pages paint from it immediately while live chain reads catch up: stale-while-revalidate.
  */
 export function useSnapshot(): RegistrySnapshot | null {
@@ -69,7 +69,10 @@ export function useListing(config: string | undefined) {
         () => listings.data?.find((l) => l.config.toBase58() === config),
         [listings.data, config]
     )
-    return { ...listings, listing }
+    // The snapshot placeholder can predate a preset (e.g. one published minutes ago), so a miss in
+    // it is not final: keep loading until the live registry read has ruled the config out.
+    const pending = !listing && listings.isPlaceholderData && listings.isFetching
+    return { ...listings, listing, isLoading: listings.isLoading || pending }
 }
 
 export function specOfListing(l: Listing, network: 'devnet' | 'mainnet-beta'): PresetSpec {

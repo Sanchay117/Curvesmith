@@ -1,5 +1,5 @@
 import { ReactNode, useState } from 'react'
-import { lpTotal, PresetCategory, PresetSpec, resolveEndMcap, TokenAuthority } from '@curvesmith/core'
+import { lpTotal, PresetCategory, PresetSpec, resolveEndMcap, TokenAuthority } from '@launchproof/core'
 import { cx, Field, InfoTip, NumberInput, Segmented, Select, Slider, TextArea, TextInput, Toggle } from '../ui'
 import { defaultShape, FreehandEditor, ShapePicker, TrancheEditor } from './ShapeEditors'
 import { CATEGORY_LABEL } from '../PresetCard'

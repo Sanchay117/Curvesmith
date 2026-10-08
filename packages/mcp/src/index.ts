@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * Curvesmith MCP server: lets AI agents design, simulate, review and launch Meteora DBC presets.
+ * Launchproof MCP server: lets AI agents design, simulate, review and launch Meteora DBC presets.
  *
  * Design rule: this server never holds or asks for private keys. Every write action returns
  * an unsigned (or partially signed, for fresh config/mint keys) base64 transaction that the
@@ -39,16 +39,16 @@ import {
     SCENARIOS,
     simulate,
     specFromConfig,
-} from '@curvesmith/core'
+} from '@launchproof/core'
 
-const server = new McpServer({ name: 'curvesmith', version: '0.1.0' })
+const server = new McpServer({ name: 'launchproof', version: '0.1.0' })
 
 const networkArg = z.enum(['devnet', 'mainnet-beta']).default('devnet').describe('Solana cluster')
 const presetArg = z
     .union([z.string(), z.record(z.string(), z.any())])
     .describe(`A library template id (${LIBRARY_IDS.join(', ')}) or a full PresetSpec object (schema "${PRESET_SCHEMA}")`)
 
-const rpc = (n: Network) => new Connection(process.env[`CURVESMITH_RPC_${n === 'devnet' ? 'DEVNET' : 'MAINNET'}`] ?? DEFAULT_RPC[n], 'confirmed')
+const rpc = (n: Network) => new Connection(process.env[`LAUNCHPROOF_RPC_${n === 'devnet' ? 'DEVNET' : 'MAINNET'}`] ?? DEFAULT_RPC[n], 'confirmed')
 
 function toSpec(p: string | Record<string, unknown>): PresetSpec {
     if (typeof p === 'string') {
@@ -165,7 +165,7 @@ tool(
 
 tool(
     'list_marketplace',
-    'List presets published in the on-chain Curvesmith registry (CSR-1) with launch counts and graduation rates.',
+    'List presets published in the on-chain Launchproof registry (CSR-1) with launch counts and graduation rates.',
     { network: networkArg },
     async ({ network }) => {
         const connection = rpc(network)

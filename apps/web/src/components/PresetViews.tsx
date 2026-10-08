@@ -9,7 +9,7 @@ import {
     ScenarioResult,
     SCENARIOS,
     simulate,
-} from '@curvesmith/core'
+} from '@launchproof/core'
 import { LineChart } from './charts/LineChart'
 import { Card, cx, GradeBadge, InfoTip, Segmented, SectionTitle, SeverityIcon, Stat } from './ui'
 import { bps, duration, num, pct, price } from '../lib/format'

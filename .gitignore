@@ -12,3 +12,5 @@ coverage
 .vite
 # upstream repos kept locally for reading (DBC program, DBC SDK, meteora-invent)
 .reference/
+# demo video pipeline (recordings, narration, API key)
+video/

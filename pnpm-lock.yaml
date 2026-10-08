@@ -168,7 +168,7 @@ importers:
 
   apps/web:
     dependencies:
-      '@curvesmith/core':
+      '@launchproof/core':
         specifier: workspace:*
         version: link:../../packages/core
       '@meteora-ag/dynamic-bonding-curve-sdk':
@@ -238,7 +238,7 @@ importers:
 
   packages/cli:
     dependencies:
-      '@curvesmith/core':
+      '@launchproof/core':
         specifier: workspace:*
         version: link:../core
       '@meteora-ag/dynamic-bonding-curve-sdk':
@@ -312,7 +312,7 @@ importers:
 
   packages/mcp:
     dependencies:
-      '@curvesmith/core':
+      '@launchproof/core':
         specifier: workspace:*
         version: link:../core
       '@meteora-ag/dynamic-bonding-curve-sdk':

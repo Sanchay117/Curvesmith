@@ -1,6 +1,6 @@
 import { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { REGISTRY_ADDRESS } from '@curvesmith/core'
+import { REGISTRY_ADDRESS } from '@launchproof/core'
 import { Card } from '../components/ui'
 
 function Step({ n, title, children }: { n: number; title: string; children: ReactNode }) {
@@ -54,11 +54,11 @@ function Flow() {
 export function About() {
     return (
         <div className="mx-auto max-w-3xl">
-            <h1 className="text-4xl font-semibold tracking-tight">How Curvesmith works</h1>
+            <h1 className="text-4xl font-semibold tracking-tight">How Launchproof works</h1>
             <p className="mt-3 text-[15px] leading-relaxed text-ink-2">
                 Meteora's Dynamic Bonding Curve (DBC) lets a token discover its price on a configurable curve, then graduate into a DAMM v2 pool once a
                 raise is met. A DBC <em>config</em> fixes everything about that launch: up to 16 curve segments, fee schedules, who owns the graduated
-                liquidity. Today those configs are ~40 raw numbers that each launchpad hand-tunes and deploys blind. Curvesmith turns them into designed,
+                liquidity. Today those configs are ~40 raw numbers that each launchpad hand-tunes and deploys blind. Launchproof turns them into designed,
                 tested, shareable products.
             </p>
 
@@ -94,7 +94,8 @@ export function About() {
                 <Step n={6} title="An on-chain registry with no indexer (CSR-1)">
                     A listing is a transaction with an SPL Memo <code className="font-mono text-[13px]">csr1:{'{...}'}</code> and a 0-lamport transfer to
                     the registry address <code className="font-mono text-[13px] break-all">{REGISTRY_ADDRESS.toBase58()}</code>, which is{' '}
-                    <code className="font-mono text-[13px]">sha256("curvesmith:registry:v1")</code>, so nobody holds its key. Clients enumerate the
+                    <code className="font-mono text-[13px]">sha256("curvesmith:registry:v1")</code> (fixed at v1, from the project's working name), so nobody
+                    holds its key. Clients enumerate the
                     marketplace with <code className="font-mono text-[13px]">getSignaturesForAddress</code>. Economics are never read from the memo: each
                     listing is joined with the real config account, and kept only if the signer is that config's fee claimer.
                 </Step>
@@ -107,7 +108,7 @@ export function About() {
             <Card className="mt-10">
                 <div className="text-[15px] font-semibold">For developers and agents</div>
                 <p className="mt-1 text-[14px] leading-relaxed text-ink-2">
-                    Everything here is a TypeScript library, <code className="font-mono text-[13px]">@curvesmith/core</code>, used unchanged by this app, a
+                    Everything here is a TypeScript library, <code className="font-mono text-[13px]">@launchproof/core</code>, used unchanged by this app, a
                     CLI, and an MCP server that lets AI agents design, simulate, review and build transactions for DBC launches. See the repository README.
                 </p>
                 <Link to="/studio" className="mt-3 inline-block text-[14px] font-semibold text-accent hover:underline">

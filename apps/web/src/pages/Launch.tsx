@@ -6,7 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { PublicKey } from '@solana/web3.js'
 import BN from 'bn.js'
 import Decimal from 'decimal.js'
-import { buildLaunchTransaction, dbcClient, explorerUrl, quoteAssetByMint, SimPool, specFromConfig } from '@curvesmith/core'
+import { buildLaunchTransaction, dbcClient, explorerUrl, quoteAssetByMint, SimPool, specFromConfig } from '@launchproof/core'
 import { Button, Card, Empty, Field, NumberInput, Skeleton, Stat, TextInput } from '../components/ui'
 import { useListing } from '../lib/queries'
 import { useNetwork } from '../lib/network'
@@ -28,7 +28,7 @@ export function Launch() {
     const toast = useToast()
     const navigate = useNavigate()
     const qc = useQueryClient()
-    const { listing } = useListing(config)
+    const { listing, isLoading: listingLoading } = useListing(config)
 
     const poolConfig = useQuery({
         enabled: !!config,
@@ -111,7 +111,7 @@ export function Launch() {
             </Link>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight">Launch a token</h1>
             <p className="mt-1 text-[14px] text-ink-2">
-                Using <span className="font-semibold text-ink">{listing?.meta.n ?? 'this DBC config'}</span>. The curve, fees and graduation terms are fixed by
+                Using <span className="font-semibold text-ink">{listing?.meta.n ?? (listingLoading ? '...' : 'this DBC config')}</span>. The curve, fees and graduation terms are fixed by
                 the preset; you choose the token.
             </p>
 
@@ -127,7 +127,7 @@ export function Launch() {
             <Card className="mt-5 space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                     <Field label="Token name" hint={`${name.length}/32`}>
-                        <TextInput value={name} maxLength={32} placeholder="Curvesmith Cat" onChange={(e) => setName(e.target.value)} />
+                        <TextInput value={name} maxLength={32} placeholder="e.g. Proof Cat" onChange={(e) => setName(e.target.value)} />
                     </Field>
                     <Field label="Symbol" hint={`${symbol.length}/10`}>
                         <TextInput value={symbol} maxLength={10} placeholder="CAT" onChange={(e) => setSymbol(e.target.value.toUpperCase())} />

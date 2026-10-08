@@ -5,7 +5,7 @@
  * Idempotent: presets already listed by this author are reused, so it can be re-run.
  * Writes everything it did to deployments/devnet.json.
  *
- *   pnpm --filter @curvesmith/cli exec tsx src/seed-devnet.ts
+ *   pnpm --filter @launchproof/cli exec tsx src/seed-devnet.ts
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -31,7 +31,7 @@ import {
     LIBRARY_IDS,
     loadPool,
     quoteSwap,
-} from '@curvesmith/core'
+} from '@launchproof/core'
 
 const root = path.resolve(process.env.INIT_CWD ?? process.cwd())
 const repo = fs.existsSync(path.join(root, 'pnpm-workspace.yaml')) ? root : path.resolve(root, '../..')
