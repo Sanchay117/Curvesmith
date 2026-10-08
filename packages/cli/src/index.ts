@@ -74,7 +74,7 @@ interface Ctx {
 const program = new Command()
 program
     .name('launchproof')
-    .description('Design, simulate, publish and launch Meteora DBC presets')
+    .description('Audit, census and launch toolkit for Meteora DBC')
     .option('-n, --network <network>', 'devnet or mainnet-beta', 'devnet')
     .option('-u, --rpc <url>', 'RPC endpoint (defaults to the public one for the network)')
     .option('-k, --keypair <path>', 'signer keypair JSON (default .keys/id.json, then ~/.config/solana/id.json)')

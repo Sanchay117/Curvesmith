@@ -197,7 +197,7 @@ function GraduateBox({ snap, quoteSymbol }: { snap: PoolSnapshot; quoteSymbol: s
             <p className="mt-1 text-[13px] text-ink-2">
                 {migrated
                     ? `The ${quoteSymbol} raised and the reserved tokens seeded a DAMM v2 pool at exactly the final curve price. LP is split and locked per the preset.`
-                    : 'The raise is in. Anyone can graduate the pool: it creates the DAMM v2 pool and splits the LP between the preset author and the creator. Meteora runs a keeper that does this on mainnet; on devnet you can crank it yourself.'}
+                    : 'The raise is in. Anyone can graduate the pool: it creates the DAMM v2 pool and splits the LP between the preset author and the creator. Anyone can crank the migration when the configured threshold is met.'}
             </p>
             <div className="mt-3 text-[13px]">
                 DAMM v2 pool <Address value={dammPool.toBase58()} network={network} />

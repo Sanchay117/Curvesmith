@@ -158,6 +158,7 @@ export function Layout({ children }: { children: ReactNode }) {
     const [theme, setTheme] = useTheme()
     const { network } = useNetwork()
     const location = useLocation()
+    const readOnly = location.pathname === '/' || (location.pathname.startsWith('/audit/') && !location.search.includes('network=devnet'))
     const [open, setOpen] = useState(false)
     const [menu, setMenu] = useState(false)
     const closeSettings = useCallback(() => setOpen(false), [])
@@ -195,8 +196,8 @@ export function Layout({ children }: { children: ReactNode }) {
                                 onClick={() => setOpen((o) => !o)}
                                 className="flex h-9 items-center gap-2 rounded-[10px] border border-line-strong bg-surface-2 px-3 text-[13px] font-medium"
                             >
-                                <span className="size-2 rounded-full" style={{ background: network === 'devnet' ? 'var(--s4)' : 'var(--good)' }} />
-                                <span className="hidden sm:inline">{network === 'devnet' ? 'Devnet' : 'Mainnet'}</span>
+                                <span className="size-2 rounded-full" style={{ background: readOnly ? 'var(--muted)' : network === 'devnet' ? 'var(--s4)' : 'var(--good)' }} />
+                                <span className="hidden sm:inline">{readOnly ? 'Mainnet · read-only' : network === 'devnet' ? 'Devnet' : 'Mainnet'}</span>
                             </button>
                             {open && <Settings onClose={() => setOpen(false)} />}
                         </div>
@@ -231,7 +232,7 @@ export function Layout({ children }: { children: ReactNode }) {
                     </nav>
                 )}
             </header>
-            {network === 'mainnet-beta' && (
+            {network === 'mainnet-beta' && !readOnly && (
                 <div className="border-b border-line bg-accent-wash px-4 py-2 text-center text-xs text-ink-2">
                     You are on mainnet. Publishing, launching and trading use real funds.
                 </div>
@@ -241,8 +242,8 @@ export function Layout({ children }: { children: ReactNode }) {
                 {children}
             </main>
             <footer className="mx-auto max-w-[1280px] px-4 pb-10 text-xs text-muted sm:px-6">
-                Built on Meteora's Dynamic Bonding Curve and DAMM v2. Simulations use the program's own fixed-point math and are verified against the
-                program binary; they are models of behaviour, not predictions of price.
+                Built on Meteora's Dynamic Bonding Curve and DAMM v2. Quotes use the official SDK's math. The simulator is differential-tested against the
+                program binary on covered cases; these models do not predict price.
             </footer>
         </div>
     )

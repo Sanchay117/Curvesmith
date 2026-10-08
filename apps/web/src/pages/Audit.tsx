@@ -53,7 +53,7 @@ export function Audit() {
         a.href = url; a.download = `launchproof-${address}.json`; a.click(); URL.revokeObjectURL(url)
     }
     const flagged = audit?.findings.filter((f) => f.severity === 'critical' || f.severity === 'warning') ?? []
-    const worst = flagged.some((f) => f.severity === 'critical') ? 'var(--critical)' : flagged.length ? 'var(--serious)' : 'var(--good)'
+    const worst = flagged.some((f) => f.severity === 'critical') ? 'var(--critical)' : flagged.length ? 'var(--serious)' : 'var(--muted)'
     return (
         <div className="mx-auto max-w-4xl">
             <Link to="/" className="text-sm text-muted transition-colors hover:text-accent">
@@ -91,11 +91,11 @@ export function Audit() {
                     {/* verdict */}
                     <div className="lp-pop mt-6 flex items-center gap-4 rounded-2xl border p-5" style={{ borderColor: `color-mix(in srgb, ${worst} 45%, transparent)`, background: `color-mix(in srgb, ${worst} 8%, transparent)` }}>
                         <div className="grid size-12 shrink-0 place-items-center rounded-xl text-xl font-bold text-white" style={{ background: worst }}>
-                            {flagged.length || '✓'}
+                            {flagged.length || 'i'}
                         </div>
                         <div>
                             <div className="text-lg font-semibold">{flagged.length ? `${flagged.length} ${flagged.length === 1 ? 'term' : 'terms'} to read before you buy` : 'No flagged terms'}</div>
-                            <div className="text-sm text-ink-2">{flagged.length ? flagged.map((f) => f.title).join(' · ') : 'Nothing in this config tripped our checks. That is not a safety certificate.'}</div>
+                            <div className="text-sm text-ink-2">{flagged.length ? flagged.map((f) => f.title).join(' · ') : 'No configured term tripped a finding.'} Seven term checks run; this is not a safety certificate.</div>
                         </div>
                     </div>
 

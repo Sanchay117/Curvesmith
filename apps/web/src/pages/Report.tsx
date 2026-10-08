@@ -86,7 +86,7 @@ export function AuditSearch({ examples = true }: { examples?: boolean }) {
 function FindingChips({ row }: { row: CensusRow }) {
     if (row.error) return <span className="text-muted">Not evaluated</span>
     const flags = row.audit?.findings.filter((f) => f.severity === 'warning' || f.severity === 'critical') ?? []
-    if (!flags.length) return <span className="inline-flex items-center gap-1.5 text-ink-2"><span className="size-1.5 rounded-full bg-good" />Clean</span>
+    if (!flags.length) return <span className="inline-flex items-center gap-1.5 text-ink-2"><span className="size-1.5 rounded-full bg-muted" />No flagged terms</span>
     return (
         <div className="flex flex-wrap gap-1.5">
             {flags.map((f) => (
@@ -120,7 +120,7 @@ function ConfigTable({ rows }: { rows: CensusRow[] }) {
                     <h2 id="config-heading" className="text-2xl font-semibold tracking-tight">
                         The most-used configs
                     </h2>
-                    <p className="mt-1 text-sm text-ink-2">Ranked by tokens launched. Click any row for its full audit.</p>
+                    <p className="mt-1 text-sm text-ink-2">Ranked by observed pools. Click any row for its full audit.</p>
                 </div>
                 <a href="./census-mainnet-beta.json" download className="text-sm font-medium text-accent hover:underline">
                     Download data ↓
@@ -161,7 +161,7 @@ function ConfigTable({ rows }: { rows: CensusRow[] }) {
                 <table className="w-full min-w-[680px] text-left text-sm">
                     <thead className="border-b border-line text-xs text-muted">
                         <tr>
-                            {['Config', 'Tokens launched', 'Migrated', 'Raise', 'Terms to read'].map((s) => (
+                            {['Config', 'Pools observed', 'Migrated', 'Raise', 'Terms to read'].map((s) => (
                                 <th key={s} className="px-4 py-3 font-medium">
                                     {s}
                                 </th>
@@ -247,7 +247,7 @@ const SIGNALS = [
 
 const STEPS = [
     { title: 'Audit', body: 'Read any live config: liquidity, supply, fees, migration.', to: '#audit', cta: 'Paste a config', icon: 'M5 12l4 4L19 6' },
-    { title: 'Design and simulate', body: 'Shape a curve, then replay snipers and crowds on the exact program math.', to: '/studio', cta: 'Open the Studio', icon: 'M4 18c5 0 7-3 9-7s4-6 7-6' },
+    { title: 'Design and simulate', body: 'Shape a curve, then replay snipers and crowds with SDK quotes and modeled pool transitions.', to: '/studio', cta: 'Open the Studio', icon: 'M4 18c5 0 7-3 9-7s4-6 7-6' },
     { title: 'Publish and earn', body: 'Your preset becomes a real DBC config. Every launch from it pays you fees.', to: '/market', cta: 'Browse presets', icon: 'M12 3v18M5 10l7-7 7 7' },
 ]
 
@@ -262,7 +262,7 @@ export function Report() {
                 <div className="mx-auto grid max-w-[1232px] items-center gap-12 lg:grid-cols-[1.1fr_1fr]">
                     <div>
                         <div className="lp-pop inline-flex items-center gap-2 rounded-full border border-line bg-surface/70 px-3 py-1 text-xs text-ink-2">
-                            <span className="lp-breathe size-1.5 rounded-full bg-accent" /> State of DBC · live mainnet census
+                            <span className="lp-breathe size-1.5 rounded-full bg-accent" /> State of DBC · mainnet snapshot
                         </div>
                         <h1 className="lp-pop mt-5 text-5xl leading-[1.02] font-semibold tracking-tight sm:text-6xl" style={{ animationDelay: '80ms' }}>
                             Read the terms
@@ -277,7 +277,7 @@ export function Report() {
                         </div>
                     </div>
                     <div className="lp-pop" style={{ animationDelay: '200ms' }}>
-                        <HeroAudit />
+                        <HeroAudit rows={data?.rows} />
                     </div>
                 </div>
             </section>
@@ -295,10 +295,10 @@ export function Report() {
                     <Reveal>
                         <Card className="grid grid-cols-2 gap-y-6 lg:grid-cols-4 lg:divide-x lg:divide-line">
                             {[
-                                { value: data.pools, label: 'tokens launched on DBC' },
+                                { value: data.pools, label: 'standard DBC pools observed' },
                                 { value: data.configs, label: 'configs behind them' },
                                 { value: (100 * data.migrated) / data.pools, label: 'reached migration', pct: true, tip: 'A program flag, not a measure of demand: some configs migrate on their very first buy.' },
-                                { value: (100 * data.auditedPools) / data.pools, label: 'of launches audited', pct: true, tip: `The ${count(data.auditedConfigs)} most-used configs, covering ${count(data.auditedPools)} launches.` },
+                                { value: (100 * data.auditedPools) / data.pools, label: 'of observed pools reviewed', pct: true, tip: `The ${count(data.auditedConfigs)} most-used configs, covering ${count(data.auditedPools)} observed pools.` },
                             ].map((s) => (
                                 <div key={s.label} className="px-2 lg:px-6">
                                     <CountUp value={s.value} format={s.pct ? (n) => `${n.toFixed(1)}%` : undefined} className="block text-3xl font-semibold tracking-tight sm:text-4xl" />
@@ -314,7 +314,7 @@ export function Report() {
                     {/* findings */}
                     <section className="mt-20">
                         <Reveal>
-                            <h2 className="text-3xl font-semibold tracking-tight">Of every launch we audited...</h2>
+                            <h2 className="text-3xl font-semibold tracking-tight">Among the observed pools we reviewed...</h2>
                         </Reveal>
                         <div className="mt-8 grid gap-4 md:grid-cols-3">
                             {SIGNALS.map((s, n) => {
@@ -329,7 +329,7 @@ export function Report() {
                                             <div>
                                                 <div className="text-[15px] leading-snug font-medium">{s.title}</div>
                                                 <div className="mt-2 flex items-center gap-1.5 text-xs text-muted">
-                                                    {count(pools)} launches <InfoTip>{s.tip}</InfoTip>
+                                                    {count(pools)} observed pools <InfoTip>{s.tip}</InfoTip>
                                                 </div>
                                             </div>
                                         </Card>
@@ -339,7 +339,7 @@ export function Report() {
                         </div>
                         <Reveal>
                             <p className="mt-4 text-xs text-muted">
-                                Weighted by tokens launched. A launch can appear in more than one group. These are permissions in the config, not observed behaviour.
+                                Weighted by observed pool count. A pool can appear in more than one group. These are permissions in the config, not observed behaviour.
                             </p>
                         </Reveal>
                     </section>

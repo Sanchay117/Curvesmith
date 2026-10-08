@@ -2,7 +2,7 @@
   "name": "launchproof",
   "private": true,
   "version": "0.1.0",
-  "description": "Launch-economics studio and preset marketplace for Meteora's Dynamic Bonding Curve",
+  "description": "Audit, census and launch toolkit for Meteora's Dynamic Bonding Curve",
   "license": "MIT",
   "type": "module",
   "engines": {

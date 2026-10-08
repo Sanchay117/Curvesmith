@@ -52,29 +52,7 @@ quote paid for them            = L * (sqrtP_high - sqrtP_low)
 
 **Graduation.** When the pool's quote reserve reaches `migrationQuoteThreshold` (the "raise"), the curve is complete. Anyone can then call `migration_damm_v2`, which creates a DAMM v2 pool at the curve's final price, deposits the raise (minus an optional graduation fee) and a reserved amount of tokens, and splits the LP position between partner and creator as unlocked, permanently locked, or vesting.
 
-## 3. The idea, and why this one
-
-The bounty judges on: depth of Meteora integration, technical quality, originality and sustainable DBC use, scalability and new asset classes, and traction. Meteora also listed ideas they want: a **config preset marketplace**, **novel curve and fee configurations**, **equity / RWA launch mechanics**, **end-to-end DBC + DAMM v2 flows**, and **developer tooling**.
-
-Most submissions to a bounty like this will be launchpads: a pump.fun-style site on top of one hard-coded config. That shows integration but not much else.
-
-Launchproof goes one level up: **it is infrastructure for every launchpad and creator**. It hits nearly every item on Meteora's list with one coherent product:
-
-- the marketplace is the explicit #1 ask, and the partner-fee model makes it economically self-sustaining (authors are paid by the protocol itself, no new token or fee needed);
-- the curve compiler makes "novel curves" a design surface instead of hand math, and the library ships flat NAV sales and IPO-style tranches for RWAs and equities;
-- the full lifecycle (publish, launch, trade, graduate, claim) is in the app, CLI and MCP;
-- the exact simulator, config auditor, keeper and MCP server are developer and agent tooling.
-
-**Alternatives considered and rejected.**
-
-| Idea | Why not |
-|---|---|
-| Another launchpad (fork of Meteora's fun-launch scaffold) | Crowded, low originality, judged mostly on traction we cannot produce in a week |
-| Trading-terminal data stream / indexer | Useful but needs paid infrastructure to be credible, and is invisible in a demo |
-| Custom Anchor program that CPIs into DBC | More "depth" on paper, but a new program to write, test and audit in a week, with real risk of shipping something broken. DBC already provides everything needed (partner = author), so a program would add risk, not capability |
-| AI-only config generator | A thin wrapper; becomes credible only once there is a trustworthy simulator underneath, which is what Launchproof builds first (the MCP server then gives agents that capability) |
-
-## 4. Architecture at a glance
+## 3. Architecture at a glance
 
 ```
               +----------------------------------------------+
@@ -101,7 +79,7 @@ Launchproof goes one level up: **it is infrastructure for every launchpad and cr
 
 **Decision: monorepo with pnpm workspaces.** Internal packages are consumed as TypeScript source (no build step between them), which keeps iteration fast. To publish `@launchproof/core` to npm later, add a `tsup` build.
 
-## 5. Deep dives
+## 4. Deep dives
 
 ### 5.1 The curve compiler (`packages/core/src/curve.ts`)
 
@@ -199,7 +177,7 @@ Unit tests and the LiteSVM suite proved the math. Clicking through the app again
 
 The earlier bugs found by the LiteSVM suite (graduation amount rounding up, not down; other launchpads' dynamic token supply) were math bugs; these were systems bugs. A serious project needs both kinds of testing.
 
-## 6. Trade-offs
+## 5. Trade-offs
 
 | Decision | Chosen | Gave up |
 |---|---|---|
@@ -213,7 +191,7 @@ The earlier bugs found by the LiteSVM suite (graduation amount rounding up, not 
 | Token metadata | Creator supplies a URI | No image hosting (would need a server or a paid storage key) |
 | Scope | SPL and Token-2022 base tokens, SOL and USDC quotes | Transfer-hook pools and badge-gated quote mints not in the Studio yet |
 
-## 7. Where everything is
+## 6. Where everything is
 
 | Path | What it is |
 |---|---|
@@ -236,7 +214,7 @@ The earlier bugs found by the LiteSVM suite (graduation amount rounding up, not 
 | `apps/web/src/lib/` | Network and RPC settings, queries, transaction sending, formatting |
 | `.reference/` (gitignored) | Meteora's DBC program, SDK and Invent repos, kept locally for reading |
 
-## 8. Running, testing, demoing, submitting
+## 7. Running, testing, and demoing
 
 ```bash
 pnpm install
@@ -252,9 +230,3 @@ pnpm --filter @launchproof/web build   # static site in apps/web/dist
 3. Open State of DBC, inspect a config, download its audit receipt, and reproduce it with `pnpm cli verify-receipt <file>`. Explain snapshot coverage and the difference between migration and demand.
 4. With the Devnet Burner: open Micro Speedrun, launch a token with a first buy, buy it to graduation (the quote shows the partial fill), click Graduate to DAMM v2, then claim author and creator fees on the Earnings page. Watch the sniper fee decay live in the buy quote during the first 30 seconds.
 5. Show `pnpm test` passing and the MCP server answering `simulate_preset`.
-
-**Before submitting** (things only you can do):
-- Record the pitch video (2 to 3 minutes) and the demo video (3 minutes or less).
-- Push the repo (it is at `github.com/Sanchay117/Launchproof`); keep it public, or grant `dannxbt` read access.
-- Run `pnpm snapshot`, commit the refreshed `apps/web/public/registry-devnet.json`, push, and enable GitHub Pages (Settings, Pages, Source: GitHub Actions). The workflow in `.github/workflows/pages.yml` tests, builds and deploys on every push to `main`.
-- Optionally publish one or two presets on mainnet with a small amount of SOL (about 0.01 SOL of rent each) for the traction criterion: `pnpm cli -n mainnet-beta -k <your keypair> publish fair-meme`.

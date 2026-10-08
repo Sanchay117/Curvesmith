@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import type { CensusRow } from '@launchproof/core'
 import { cx } from './ui'
 import { prefersReducedMotion } from './motion'
 
 type Severity = 'critical' | 'warning' | 'info' | 'good'
 
-/** Real mainnet configs and the findings the census recorded for them (census-mainnet-beta.json). */
+/** Real mainnet config examples; curve paths below are hand-drawn illustrations. */
 const EXAMPLES: Array<{ address: string; launches: string; quote: string; curve: string; findings: Array<{ text: string; severity: Severity }>; verdict: string }> = [
     {
         address: '2bFH5q216w51UopEZP359NGGSUUeCwmycoBzP8Jc83at',
-        launches: '1,841 tokens launched',
+        launches: '1,841 pools observed',
         quote: 'SOL',
         curve: 'M24 196 C 120 190, 200 168, 270 120 S 380 44, 436 30',
         findings: [
@@ -21,7 +22,7 @@ const EXAMPLES: Array<{ address: string; launches: string; quote: string; curve:
     },
     {
         address: '38RRrtvAbAYnmCDjym31nvw5MYQGi3LQJQ6Gp6RbT7DU',
-        launches: '59,803 tokens launched',
+        launches: '59,803 pools observed',
         quote: 'SOL',
         curve: 'M24 112 L 436 108',
         findings: [
@@ -32,7 +33,7 @@ const EXAMPLES: Array<{ address: string; launches: string; quote: string; curve:
     },
     {
         address: 'FbKf76ucsQssF7XZBuzScdJfugtsSKwZFYztKsMEhWZM',
-        launches: '175,620 tokens launched',
+        launches: '175,620 pools observed',
         quote: 'USDC',
         curve: 'M24 200 C 180 198, 300 180, 360 120 S 420 40, 436 26',
         findings: [
@@ -51,10 +52,10 @@ const DOT: Record<Severity, string> = {
 }
 
 /**
- * The home page's hero: a live-looking audit that draws a config's curve, scans it, and pops
+ * The home page's hero: an illustrated audit that sketches a curve, scans it, and pops
  * the findings in one by one, cycling through three real configs. Clicking opens the real audit.
  */
-export function HeroAudit() {
+export function HeroAudit({ rows }: { rows?: CensusRow[] }) {
     const [i, setI] = useState(0)
     useEffect(() => {
         if (prefersReducedMotion()) return
@@ -62,6 +63,7 @@ export function HeroAudit() {
         return () => clearInterval(id)
     }, [])
     const ex = EXAMPLES[i]
+    const observedPools = rows?.find((row) => row.address === ex.address)?.pools
     const flagged = ex.findings.some((f) => f.severity === 'critical' || f.severity === 'warning')
     return (
         <Link
@@ -76,7 +78,7 @@ export function HeroAudit() {
                         {ex.address.slice(0, 4)}...{ex.address.slice(-4)}
                         <span className="text-muted">· mainnet · {ex.quote}</span>
                     </div>
-                    <span className="text-muted">{ex.launches}</span>
+                    <span className="text-muted">{observedPools === undefined ? ex.launches : `${observedPools.toLocaleString('en-US')} pools observed`}</span>
                 </div>
 
                 <div className="relative mt-4">
@@ -99,6 +101,7 @@ export function HeroAudit() {
                         <rect className="lp-scan" x="0" y="10" width="46" height="200" fill="url(#hero-scan)" />
                     </svg>
                 </div>
+                <div className="text-right text-[11px] text-muted">Illustrative curve</div>
 
                 <div className="mt-2 flex flex-wrap gap-2">
                     {ex.findings.map((f, n) => (
@@ -117,7 +120,7 @@ export function HeroAudit() {
                     className="lp-pop mt-4 flex items-center justify-between border-t border-line pt-3"
                     style={{ animationDelay: `${1400 + ex.findings.length * 350}ms` }}
                 >
-                    <span className={cx('text-sm font-semibold', flagged ? 'text-serious' : 'text-good')}>{ex.verdict}</span>
+                    <span className={cx('text-sm font-semibold', flagged ? 'text-serious' : 'text-ink-2')}>{ex.verdict}</span>
                     <span className="text-xs font-medium text-accent group-hover:underline">Open full audit →</span>
                 </div>
             </div>
@@ -132,4 +135,4 @@ export function HeroAudit() {
 }
 
 /** One-click real examples under the audit box, so nobody has to go find an address. */
-export const AUDIT_EXAMPLES = EXAMPLES.map((e) => ({ address: e.address, label: e.launches.replace(' tokens launched', ' launches') }))
+export const AUDIT_EXAMPLES = EXAMPLES.map((e) => ({ address: e.address, label: e.launches }))

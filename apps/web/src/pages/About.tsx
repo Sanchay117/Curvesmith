@@ -22,7 +22,7 @@ function Flow() {
     const boxes = [
         { label: 'PresetSpec', sub: 'shape, mcaps, fees, LP' },
         { label: 'Curve compiler', sub: '16-segment DBC curve' },
-        { label: 'Simulator + lint', sub: 'exact program math' },
+        { label: 'Simulator + lint', sub: 'SDK quote math' },
         { label: 'create_config', sub: 'you are the partner' },
         { label: 'CSR-1 listing', sub: 'memo + registry ref' },
     ]
@@ -76,13 +76,12 @@ export function About() {
                     Pick a price path (linear, exponential, S-curve and more) and market caps. The compiler builds a DBC curve of up to 16 segments, so the pool
                     opens at the final price with no gap.
                 </Step>
-                <Step n={2} title="Simulate with the program's own math" delay={70}>
+                <Step n={2} title="Simulate with official SDK quotes" delay={70}>
                     Quotes come from the official DBC SDK, which mirrors the program's fixed-point arithmetic. Seeded scenarios replay snipers, crowds, whales and
                     panics, so runs are reproducible.
                 </Step>
                 <Step n={3} title="Verified against the real program binary" delay={140}>
-                    Tests run Meteora's real DBC and DAMM v2 binaries in LiteSVM, an in-process Solana VM. Random trades must match the simulator's price, reserves
-                    and fees after every swap.
+                    Tests run Meteora's real DBC and DAMM v2 binaries in LiteSVM, an in-process Solana VM. Covered trade scenarios compare simulator prices, reserves and fees against program execution.
                 </Step>
                 <Step n={4} title="Review before you publish" delay={210}>
                     Lint flags risky terms the chain accepts but traders pay for, such as sniper taxes, unlocked LP, thin pools and retained mint authority. The

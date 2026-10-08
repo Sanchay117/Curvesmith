@@ -18,7 +18,7 @@ A migration flag is a state transition, not evidence of demand, unique users, vo
 
 - **Studio:** eight curve families, fee schedules, LP locks and vesting, creator allocations, and DAMM v2 migration settings.
 - **Simulation:** seeded market scenarios using official SDK quote math and modeled pool state transitions. Differential tests compare covered cases against real DBC program execution in LiteSVM.
-- **Presets:** publish a DBC config and list it in the CSR-1 on-chain registry. Authors receive the partner fees configured for tokens launched on their presets.
+- **Presets:** publish a DBC config and list it in the CSR-1 on-chain registry. Authors receive the partner fees configured for pools launched from their presets.
 - **Lifecycle:** launch with a bundled first buy, trade, migrate into DAMM v2, and claim fees. Existing demonstration deployments are on devnet; addresses are in [deployments/devnet.json](deployments/devnet.json).
 - **Developer tools:** shared TypeScript core, CLI, read-only audits, MCP transaction builders, and a graduation keeper.
 
@@ -81,7 +81,7 @@ Other commands include `launch`, `buy`, `sell`, `status`, `graduate`, `claim`, a
 }
 ```
 
-The MCP exposes `audit_config`, `inspect_config`, template evaluation and simulation, market/pool reads, and transaction builders. Builders return transactions for an external wallet to sign. RPC overrides: `LAUNCHPROOF_RPC_DEVNET` and `LAUNCHPROOF_RPC_MAINNET`. Browser defaults use `VITE_RPC_DEVNET` and `VITE_RPC_MAINNET`; these values are public in the bundle.
+The MCP exposes `audit_config`, `inspect_config`, template evaluation and simulation, market/pool reads, and unsigned publish, launch, and swap transaction builders. It does not expose migrate or claim builders. Builders return transactions for an external wallet to sign. RPC overrides: `LAUNCHPROOF_RPC_DEVNET` and `LAUNCHPROOF_RPC_MAINNET`. Browser defaults use `VITE_RPC_DEVNET` and `VITE_RPC_MAINNET`; these values are public in the bundle.
 
 ## Repository map
 
@@ -93,7 +93,6 @@ The MCP exposes `audit_config`, `inspect_config`, template evaluation and simula
 | `packages/mcp/src/` | MCP tools |
 | `apps/web/` | React/Vite static frontend and report artifacts |
 | `docs/CENSUS.md` | Data methodology, policy, and limitations |
-| `docs/SUBMISSION.md` | Submission narrative, demo plan, and remaining launch work |
 
 Launchproof was developed under the working name Curvesmith. Package names and branding changed; the CSR-1 seed `curvesmith:registry:v1` and `csr1:` memo prefix remain unchanged so existing listings continue to resolve. [Registry specification](docs/CSR-1.md).
 
