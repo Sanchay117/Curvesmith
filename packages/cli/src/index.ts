@@ -80,15 +80,16 @@ program
     .option('-k, --keypair <path>', 'signer keypair JSON (default .keys/id.json, then ~/.config/solana/id.json)')
 
 program.command('census')
-    .description('scan standard DBC pools and audit the most-used configs; read-only, no wallet required')
+    .description('scan standard DBC pools, review leading configs, and sample single-pool configs; read-only')
     .option('--limit <number>', 'maximum configs to audit', '5000')
+    .option('--tail-sample <number>', 'seeded sample of single-pool configs', '3000')
     .option('--out <file>', 'report JSON output; defaults to apps/web/public/census-<network>.json')
     .option('--cache <directory>', 'raw RPC evidence archive', '.cache/census')
     .option('--resume', 'reuse completed requests from this archive')
     .option('--offline', 'rebuild entirely from archived responses')
-    .action(run(async (o: { limit: string; out?: string; cache: string; resume?: boolean; offline?: boolean }) => {
+    .action(run(async (o: { limit: string; tailSample: string; out?: string; cache: string; resume?: boolean; offline?: boolean }) => {
         const c = ctx()
-        await buildCensus(c.connection.rpcEndpoint, c.network, { ...o, limit: Number(o.limit), out: path.resolve(userCwd, o.out ?? `apps/web/public/census-${c.network}.json`), cache: path.resolve(userCwd, o.cache) })
+        await buildCensus(c.connection.rpcEndpoint, c.network, { ...o, limit: Number(o.limit), tailSample: Number(o.tailSample), out: path.resolve(userCwd, o.out ?? `apps/web/public/census-${c.network}.json`), cache: path.resolve(userCwd, o.cache) })
     }))
 
 program.command('verify-receipt <file>')
@@ -101,7 +102,8 @@ program.command('verify-receipt <file>')
 
 program.command('verify-census <file>')
     .description('verify published config reviews and sample layouts against the companion evidence archive, offline')
-    .action(run(async (file: string) => verifyCensus(path.resolve(userCwd, file))))
+    .option('--cache <directory>', 'also verify sample selection against complete local pool counts')
+    .action(run(async (file: string, o: { cache?: string }) => verifyCensus(path.resolve(userCwd, file), o.cache ? path.resolve(userCwd, o.cache) : undefined)))
 
 program.command('audit <address>')
     .description('review raw config fields without assuming its quote mint or simulating unsupported modes')

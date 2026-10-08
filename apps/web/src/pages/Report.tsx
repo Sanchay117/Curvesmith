@@ -311,6 +311,31 @@ export function Report() {
                         </Card>
                     </Reveal>
 
+                    {data.tail && (
+                        <Reveal className="mt-4">
+                            <Card className="grid gap-4 text-sm text-ink-2 sm:grid-cols-2">
+                                <div>
+                                    <div className="font-semibold text-ink">Most-used configs: direct reviews</div>
+                                    <p className="mt-1">{count(data.auditedConfigs)} configs account for {count(data.auditedPools)} observed pools ({percent(data.auditedPools, data.pools)}). Findings here are weighted by their observed pool counts.</p>
+                                </div>
+                                <div>
+                                    <div className="font-semibold text-ink">Single-pool configs: sampled estimate</div>
+                                    <p className="mt-1">{count(data.tail.populationConfigs)} configs ({percent(data.tail.populationConfigs, data.configs)} of configs) account for {percent(data.tail.populationPools, data.pools)} of observed pools. We reviewed {count(data.tail.evaluated)} of {count(data.tail.sampleSize)} randomly selected configs; finding shares use 95% Wilson intervals.</p>
+                                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                                        {[
+                                            ['unlocked-lp', 'Majority LP unlocked'],
+                                            ['leftover-supply', 'Residual supply'],
+                                            ['mint-authority', 'Mint authority'],
+                                        ].map(([id, label]) => {
+                                            const finding = data.tail!.findings.find((item) => item.id === id)
+                                            return finding && <span key={id}>{label}: {(100 * finding.share).toFixed(1)}% (95% CI {(100 * finding.low95).toFixed(1)}–{(100 * finding.high95).toFixed(1)}%)</span>
+                                        })}
+                                    </div>
+                                </div>
+                            </Card>
+                        </Reveal>
+                    )}
+
                     {/* findings */}
                     <section className="mt-20">
                         <Reveal>

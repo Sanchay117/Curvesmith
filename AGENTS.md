@@ -37,7 +37,7 @@ Existing commits use short, informal subjects without a standardized prefix. Pre
 
 ## Maintainer Notes
 
-The mainnet census is a snapshot of observed standard DBC pool accounts, not all launches. Its method and exclusions are in `docs/CENSUS.md`; the compact report and evidence archive are in `apps/web/public/`. The auditor reviews configured terms, not issuer identity or investment safety. Keep the CSR-1 seed `curvesmith:registry:v1` unchanged so existing listings remain readable. For this submission, keep wallets and `.keys/` untouched, do not send transactions or edit `video/`, and run `pnpm typecheck && pnpm test && pnpm build` before each commit.
+The mainnet census is a snapshot of observed standard DBC pool accounts, not all launches. It directly reviews the most-used configs and estimates finding shares among single-pool configs from a seeded 3,000-config sample; `verify-census --cache .cache/census-v1` checks the sample selection and findings offline. Its method and exclusions are in `docs/CENSUS.md`; the compact report and evidence archive are in `apps/web/public/`. The auditor reviews configured terms, not issuer identity or investment safety. Keep the CSR-1 seed `curvesmith:registry:v1` unchanged so existing listings remain readable. For this submission, keep wallets and `.keys/` untouched, do not send transactions or edit `video/`, and run `pnpm typecheck && pnpm test && pnpm build` before each commit.
 
 ## Security & Configuration
 

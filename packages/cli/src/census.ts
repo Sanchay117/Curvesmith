@@ -14,11 +14,39 @@ type RpcAccount = { owner: string; data: [string, 'base64']; executable: boolean
 type RpcResult<T> = { context: { slot: number }; value: T }
 type PoolRecord = { pubkey: string; account: RpcAccount }
 const hash = (data: Uint8Array) => createHash('sha256').update(data).digest('hex')
+const TAIL_SEED = 'launchproof-single-pool-v1'
 
-export interface CensusOptions { out: string; cache: string; limit: number; resume?: boolean; offline?: boolean }
+function selectTail(rows: CensusRow[], size: number, seed: string): CensusRow[] {
+    return rows.filter((row) => row.pools === 1)
+        .map((row) => ({ row, rank: hash(Buffer.from(`${seed}:${row.address}`)) }))
+        .sort((a, b) => a.rank.localeCompare(b.rank) || a.row.address.localeCompare(b.row.address))
+        .slice(0, size).map(({ row }) => row)
+}
+
+function wilson(count: number, total: number): { low95: number; high95: number } {
+    if (!total) return { low95: 0, high95: 1 }
+    const z = 1.959963984540054
+    const p = count / total
+    const denominator = 1 + z * z / total
+    const center = (p + z * z / (2 * total)) / denominator
+    const margin = z * Math.sqrt(p * (1 - p) / total + z * z / (4 * total * total)) / denominator
+    return { low95: Math.max(0, center - margin), high95: Math.min(1, center + margin) }
+}
+
+function tailFindings(rows: CensusRow[]) {
+    const reviewed = rows.filter((row) => row.audit)
+    const ids = [...new Set(reviewed.flatMap((row) => row.audit!.findings.map((finding) => finding.id)))].sort()
+    return ids.map((id) => {
+        const count = reviewed.filter((row) => row.audit!.findings.some((finding) => finding.id === id)).length
+        return { id, count, share: count / reviewed.length, ...wilson(count, reviewed.length) }
+    })
+}
+
+export interface CensusOptions { out: string; cache: string; limit: number; tailSample: number; resume?: boolean; offline?: boolean }
 
 export async function buildCensus(rpcUrl: string, network: Network, options: CensusOptions) {
     if (!Number.isInteger(options.limit) || options.limit < 1 || options.limit > 20_000) throw new Error('limit must be 1–20000')
+    if (!Number.isInteger(options.tailSample) || options.tailSample < 1 || options.tailSample > 20_000) throw new Error('tail-sample must be 1–20000')
     const cache = path.resolve(options.cache)
     fs.mkdirSync(cache, { recursive: true })
     const identityPath = path.join(cache, 'identity.json')
@@ -98,6 +126,8 @@ export async function buildCensus(rpcUrl: string, network: Network, options: Cen
     const poolCount = rows.reduce((n, r) => n + r.pools, 0)
     const migratedCount = rows.reduce((n, r) => n + r.migrated, 0)
     const top = rows.slice(0, options.limit)
+    const singletons = rows.filter((row) => row.pools === 1)
+    const tail = selectTail(rows, Math.min(options.tailSample, singletons.length), TAIL_SEED)
     fs.writeFileSync(path.join(cache, 'all-config-counts.json.gz'), gzipSync(JSON.stringify(rows)))
 
     let checked = 0
@@ -154,6 +184,43 @@ export async function buildCensus(rpcUrl: string, network: Network, options: Cen
         try { row.audit = auditConfig(config, network, decimals.get(config.quoteMint.toBase58())) }
         catch (error) { row.error = (error as Error).message }
     }
+    const tailEntries: Array<{ address: string; data?: string; slot?: number; error?: string }> = []
+    const tailDecoded = new Map<string, PoolConfig>()
+    for (let i = 0; i < tail.length; i += 100) {
+        console.error(`Reading single-pool sample ${i + 1}–${Math.min(i + 100, tail.length)} of ${tail.length}…`)
+        const batch = await request<Array<RpcAccount | null>>(`tail-configs-${i}`, 'getMultipleAccounts', [tail.slice(i, i + 100).map((r) => r.address), { encoding: 'base64', commitment: 'finalized' }])
+        for (let j = 0; j < batch.value.length; j++) {
+            const row = tail[i + j]
+            const account = batch.value[j]
+            try {
+                if (!account || account.owner !== DBC_PROGRAM_ID.toBase58()) throw new Error('Config missing or incorrect owner')
+                const config = program.coder.accounts.decode('poolConfig', Buffer.from(account.data[0], 'base64')) as PoolConfig
+                tailDecoded.set(row.address, config)
+                tailEntries.push({ address: row.address, data: account.data[0], slot: batch.context.slot })
+            } catch (error) { tailEntries.push({ address: row.address, error: (error as Error).message }) }
+        }
+    }
+    const tailMints = [...new Set([...tailDecoded.values()].map((c) => c.quoteMint.toBase58()))].filter((mint) => !decimals.has(mint)).sort()
+    for (let i = 0; i < tailMints.length; i += 100) {
+        const batch = await request<Array<RpcAccount | null>>(`tail-mints-${i}`, 'getMultipleAccounts', [tailMints.slice(i, i + 100), { encoding: 'base64', commitment: 'finalized' }])
+        batch.value.forEach((account, j) => {
+            if (!account) return
+            const mint = tailMints[i + j]
+            try {
+                const owner = new PublicKey(account.owner)
+                if (!owner.equals(TOKEN_PROGRAM_ID) && !owner.equals(TOKEN_2022_PROGRAM_ID)) return
+                decimals.set(mint, unpackMint(new PublicKey(mint), { ...account, owner, data: Buffer.from(account.data[0], 'base64') }, owner).decimals)
+                mintEvidence.push({ address: mint, data: account.data[0], owner: account.owner })
+            } catch { /* Keep unresolved amounts in raw units. */ }
+        })
+    }
+    for (const row of tail) {
+        const config = tailDecoded.get(row.address)
+        if (!config) continue
+        try { row.audit = auditConfig(config, network, decimals.get(config.quoteMint.toBase58())) }
+        catch (error) { tailEntries.find((entry) => entry.address === row.address)!.error = (error as Error).message }
+    }
+    const tailReviewed = tail.filter((row) => row.audit)
     const audited = top.filter((r) => r.audit)
     const report: CensusReport = {
         schema: 'launchproof/census@1', generatedAt: new Date().toISOString(), observedAt: new Date(Math.max(...observationTimes)).toISOString(), network, programId: DBC_PROGRAM_ID.toBase58(),
@@ -161,10 +228,15 @@ export async function buildCensus(rpcUrl: string, network: Network, options: Cen
         scope: 'Existing standard VirtualPool accounts observed across two finalized scans. Excludes transfer-hook pools and closed accounts. This is an observation window, not a historical launch count or a single-slot snapshot. Migration is a program flag, not evidence of users, demand, volume, or misconduct.',
         duplicateObservations: duplicates, auditedConfigs: audited.length, auditedPools: audited.reduce((n, r) => n + r.pools, 0),
         failures: top.length - audited.length, validation: { checked, mismatches: 0 }, evidence, rows: top,
+        tail: {
+            populationConfigs: singletons.length, populationPools: singletons.length,
+            sampleSize: tail.length, evaluated: tailReviewed.length, failures: tail.length - tailReviewed.length,
+            seed: TAIL_SEED, findings: tailFindings(tail),
+        },
     }
     fs.mkdirSync(path.dirname(options.out), { recursive: true })
     const publicEvidence = options.out.replace(/\.json$/, '') + '-evidence.json.gz'
-    fs.writeFileSync(publicEvidence, gzipSync(JSON.stringify({ schema: 'launchproof/census-evidence@1', configs, samples, mints: mintEvidence })))
+    fs.writeFileSync(publicEvidence, gzipSync(JSON.stringify({ schema: 'launchproof/census-evidence@1', configs, samples, mints: mintEvidence, tail: tailEntries })))
     report.evidence.push({ file: path.basename(publicEvidence), sha256: hash(fs.readFileSync(publicEvidence)) })
     fs.writeFileSync(`${options.out}.tmp`, JSON.stringify(report))
     fs.renameSync(`${options.out}.tmp`, options.out)
@@ -173,7 +245,7 @@ export async function buildCensus(rpcUrl: string, network: Network, options: Cen
 }
 
 /** Verify the published selection; aggregate counts require replaying the complete local archive. */
-export function verifyCensus(reportPath: string) {
+export function verifyCensus(reportPath: string, cachePath?: string) {
     const report = JSON.parse(fs.readFileSync(reportPath, 'utf8')) as CensusReport
     if (report.schema !== 'launchproof/census@1') throw new Error('Unknown census schema')
     const evidenceFile = reportPath.replace(/\.json$/, '') + '-evidence.json.gz'
@@ -183,6 +255,7 @@ export function verifyCensus(reportPath: string) {
     const evidence = JSON.parse(gunzipSync(packed).toString()) as {
         configs: Array<{ address: string; data: string }>; samples: Array<{ address: string; data: string }>;
         mints: Array<{ address: string; data: string; owner: string }>;
+        tail?: Array<{ address: string; data?: string; slot?: number; error?: string }>;
     }
     const { program } = createDbcProgram(new Connection('http://localhost:8899'))
     const mints = new Map(evidence.mints.map((m) => [m.address, m]))
@@ -211,6 +284,37 @@ export function verifyCensus(reportPath: string) {
         const fields = readPoolCensusFields(bytes)
         if (fields.config !== decoded.poolState.config.toBase58() || fields.migrated !== (decoded.poolState.isMigrated === 1)) throw new Error('Sample decoding mismatch')
     }
+    if (report.tail) {
+        if (!evidence.tail || evidence.tail.length !== report.tail.sampleSize) throw new Error('Tail sample evidence count differs')
+        const addresses = evidence.tail.map((entry) => entry.address)
+        if (new Set(addresses).size !== addresses.length) throw new Error('Duplicate tail sample address')
+        if (cachePath) {
+            const counts = JSON.parse(gunzipSync(fs.readFileSync(path.join(cachePath, 'all-config-counts.json.gz'))).toString()) as CensusRow[]
+            if (counts.filter((row) => row.pools === 1).length !== report.tail.populationConfigs) throw new Error('Tail population count differs')
+            const selection = selectTail(counts, report.tail.sampleSize, report.tail.seed).map((row) => row.address)
+            if (JSON.stringify(selection) !== JSON.stringify(addresses)) throw new Error('Tail selection differs from complete count archive')
+        }
+        const reviews: CensusRow[] = []
+        for (const entry of evidence.tail) {
+            if (!entry.data) continue
+            const bytes = Buffer.from(entry.data, 'base64')
+            const config = program.coder.accounts.decode('poolConfig', bytes) as PoolConfig
+            const mint = mints.get(config.quoteMint.toBase58())
+            let precision: number | undefined
+            if (mint) {
+                const owner = new PublicKey(mint.owner)
+                if (!owner.equals(TOKEN_PROGRAM_ID) && !owner.equals(TOKEN_2022_PROGRAM_ID)) throw new Error('Invalid tail mint owner')
+                precision = unpackMint(config.quoteMint, { data: Buffer.from(mint.data, 'base64'), owner, lamports: 0, executable: false }, owner).decimals
+            }
+            try {
+                reviews.push({ address: entry.address, pools: 1, migrated: 0, samplePool: '', configHash: hash(bytes), audit: auditConfig(config, report.network, precision) })
+            } catch {
+                if (!entry.error) throw new Error(`Unexpected tail review failure ${entry.address}`)
+            }
+        }
+        if (reviews.length !== report.tail.evaluated || report.tail.failures !== report.tail.sampleSize - reviews.length) throw new Error('Tail review counts differ')
+        if (JSON.stringify(tailFindings(reviews)) !== JSON.stringify(report.tail.findings)) throw new Error('Tail finding estimates differ')
+    }
     if (verified !== report.auditedConfigs || evidence.samples.length !== report.validation.checked) throw new Error('Verification counts differ')
-    console.log(`Verified ${verified} config hashes and reviews, and ${evidence.samples.length} pool layouts. Full-network totals require replaying the raw scan archive; chain inclusion is not proven.`)
+    console.log(`Verified ${verified} top config reviews, ${report.tail?.evaluated ?? 0} sampled tail reviews, and ${evidence.samples.length} pool layouts. Full-network totals require replaying the raw scan archive; chain inclusion is not proven.`)
 }

@@ -42,6 +42,15 @@ export interface CensusReport {
     auditedPools: number
     failures: number
     validation: { checked: number; mismatches: number }
+    tail?: {
+        populationConfigs: number
+        populationPools: number
+        sampleSize: number
+        evaluated: number
+        failures: number
+        seed: string
+        findings: Array<{ id: string; count: number; share: number; low95: number; high95: number }>
+    }
     evidence: Array<{ file: string; sha256: string }>
     rows: CensusRow[]
 }

@@ -42,13 +42,14 @@ Tests run sequentially on macOS in CI because the pinned LiteSVM Linux build has
 
 ```bash
 # Read-only: no keypair or SOL required. Full scans can download hundreds of MB.
-pnpm cli -n mainnet-beta census --limit 5000 --cache .cache/census-new
+pnpm cli -n mainnet-beta census --limit 5000 --tail-sample 3000 --cache .cache/census-new
 # Resume a partially completed collection, or recompute from a complete archive:
-pnpm cli -n mainnet-beta census --limit 5000 --cache .cache/census-new --resume
-pnpm cli -n mainnet-beta census --limit 5000 --cache .cache/census-new --offline
+pnpm cli -n mainnet-beta census --limit 5000 --tail-sample 3000 --cache .cache/census-new --resume
+pnpm cli -n mainnet-beta census --limit 5000 --tail-sample 3000 --cache .cache/census-new --offline
 
 pnpm cli -n mainnet-beta audit <config-address>
 pnpm cli verify-receipt <downloaded-receipt.json>
+pnpm cli verify-census apps/web/public/census-mainnet-beta.json --cache .cache/census-new
 pnpm cli inspect fair-meme
 ```
 
