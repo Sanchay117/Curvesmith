@@ -1,157 +1,102 @@
-# Curvesmith
+# Launchproof
 
-**Launch economics, designed and proven.** A studio, simulator and on-chain marketplace for Meteora's Dynamic Bonding Curve (DBC).
+**Read the terms. Before the launch.**
 
-Design a launch curve visually, test it against snipers and crowds with the DBC program's own math (verified against the real program binary), publish it as a real DBC config that pays you partner fees, and let anyone launch, trade and graduate tokens from it into DAMM v2. Everything is also available to AI agents through an MCP server and to developers through a TypeScript library and CLI.
+Launchproof is a configuration review and launch toolkit for Meteora's Dynamic Bonding Curve. It turns on-chain permissions into readable terms: who can mint, who can withdraw liquidity, how supply is allocated, and which asset a launch actually raises.
 
-> Built for the Meteora "Best use of DBC" bounty (Crypto World's Fair, Solana). Runs on devnet out of the box; mainnet is one toggle away.
+[App](https://sanchay117.github.io/Launchproof/) · [State of DBC](https://sanchay117.github.io/Launchproof/#/report) · [Methodology](docs/CENSUS.md) · [Developer guide](docs/GUIDE.md)
 
----
+## Start with evidence
 
-## The problem
+The **State of DBC** report scans existing standard mainnet DBC pool accounts, ranks their configs by observed pool count, and reviews the most-used configs. The page shows its observation window, audit coverage, excluded accounts, and any evaluation failures. Download its JSON and source account archive to inspect the results.
 
-DBC is the most configurable launch primitive on Solana: up to 16 curve segments, time-decaying and volatility-aware fees, graduation fees, LP locks and vesting, creator allocations, Token-2022 and custom DAMM v2 pool fees. But a DBC config is about forty raw numbers (Q64.64 square-root prices, u128 liquidities, fee numerators). Today every launchpad hand-tunes those numbers, deploys them blind, and creators and traders have no way to see what a config actually does until money is on the line.
+A **configuration audit** reads a config directly without a wallet or registry listing. It supports custom quote mints without mislabeling them SOL. Download an audit receipt containing the account bytes, SHA-256 hash, slot, and review results; reproduce it offline with the CLI.
 
-We pointed the toolkit at live mainnet launchpad configs and it immediately surfaced terms no user would see from a launch page, for example a config that sells 7% of supply on the curve, pairs 3% in the pool, and leaves **90% of the supply to its own fee wallet after graduation**, with 89% of the graduated LP withdrawable on day one:
+A migration flag is a state transition, not evidence of demand, unique users, volume, or misconduct. These checks describe configured permissions and economic terms, not issuer trustworthiness or investment safety. See the [scope and reproducibility limits](docs/CENSUS.md).
 
-```
-$ pnpm cli -n mainnet-beta inspect 2bFH5q216w51UopEZP359NGGSUUeCwmycoBzP8Jc83at
-Imported config  [F 12/100]
-  supply            7.1% sold on curve, 2.9% to LP, 0% creator
-  review
-   [critical] 90% of supply goes to the leftover receiver
-   [warning]  No anti-sniper fee
-   [warning]  89% of graduated liquidity is withdrawable on day one
-```
+## Then build a better launch
 
-## What Curvesmith does
+- **Studio:** eight curve families, fee schedules, LP locks and vesting, creator allocations, and DAMM v2 migration settings.
+- **Simulation:** seeded market scenarios using official SDK quote math and modeled pool state transitions. Differential tests compare covered cases against real DBC program execution in LiteSVM.
+- **Presets:** publish a DBC config and list it in the CSR-1 on-chain registry. Authors receive the partner fees configured for tokens launched on their presets.
+- **Lifecycle:** launch with a bundled first buy, trade, migrate into DAMM v2, and claim fees. Existing demonstration deployments are on devnet; addresses are in [deployments/devnet.json](deployments/devnet.json).
+- **Developer tools:** shared TypeScript core, CLI, read-only audits, MCP transaction builders, and a graduation keeper.
 
-| | |
-|---|---|
-| **Design** | Pick a price path (constant product, linear, exponential, power, S-curve, flat, stepped tranches, or drag a freehand curve) plus market caps, fees, graduation terms and LP ownership. A compiler turns it into an exact 16-segment DBC config. |
-| **Simulate** | Agent-based market replays (sniper rush, organic crowd, whale, panic, slow grind) on a pool model that matches the on-chain program bit for bit. See sniper ROI, graduation time, fee split and the DAMM v2 pool you graduate into. |
-| **Review** | Protocol validation (what `create_config` would reject) plus economic lints the chain happily accepts: no sniper tax, withdrawable LP, thin graduated pools, retained mint authority, hidden leftover supply. A 0-100 launch health score. |
-| **Publish** | One click creates a DBC config owned by your wallet (you are the partner and fee claimer) and lists it in an on-chain registry. Every token launched from your preset pays you its partner trading fees. |
-| **Marketplace** | Browse presets with live on-chain stats (launches, graduation rate, fees generated), fork any of them, or paste **any DBC config address** from any launchpad to audit it. |
-| **Launch and trade** | Launch a token from any preset with a bundled first buy, trade with exact quotes, crank graduation into DAMM v2 (permissionless), and claim author and creator fees. |
-| **Agents and developers** | `@curvesmith/core` library, a CLI, and an MCP server with 12 tools so AI agents can design, simulate, review and build transactions for DBC launches. Meteora's own MCP is docs-only; this one acts. |
+The Studio and trading interface support SOL/USDC quotes, time-based fees, and DAMM v2 migration. The raw configuration audit can review additional quote assets and fee modes without pretending the simulator supports them.
 
-## How it maps to what Meteora asked for
+## Run locally
 
-| Meteora's wish list | Curvesmith |
-|---|---|
-| DBC configuration preset marketplace | Core product: an on-chain preset registry (CSR-1) where authors earn the partner fees of every launch from their preset |
-| Novel curve or fee configurations (flat, exponential, long curves) | Eight curve families compiled to DBC segments, including flat NAV sales, IPO-style tranches, S-curves and freehand; eight curated templates |
-| Launch mechanics optimized for equity / stock launches, RWAs | `NAV Subscription` (fixed-price USDC sale, issuer metadata authority) and `Equity Tranches` (four priced tranches, team vesting, LP vesting) |
-| End-to-end launch flows integrating DBC and DAMM v2 | Publish, launch, trade, graduate into DAMM v2 and claim, all in the app, CLI and MCP |
-| Developer tooling for trading terminals | Exact quote engine (`quoteSwap`) shared by the UI, CLI and MCP; config auditor; keeper that graduates completed pools |
-| AI applications | MCP server; `Agent Treasury` template routes curve and graduation fees to an agent's wallet |
-
-## Proof: it matches the real program
-
-The simulator is only useful if it is exactly right, so the test suite runs Meteora's actual DBC, DAMM v2 and Metaplex program binaries inside [LiteSVM](https://github.com/LiteSVM/litesvm), an in-process Solana VM:
-
-- **Config parity**: for every curve family, the config account the DBC program writes is compared field by field with Curvesmith's off-chain derivation.
-- **Swap replay**: 60 seeded random buys and sells (fee decay, dynamic fees, sells, partial fills at graduation) run on both the simulator and the real program; price, reserves, every fee bucket and the volatility tracker must match to the lamport after every swap.
-- **Full lifecycle**: publish, launch with a min-fee creator first buy, trade to graduation, permissionless migration into a real DAMM v2 pool (opening price must equal the final curve price; deposited quote within 0.01% of prediction), and a partner fee claim.
-- **Dynamic supply**: the minted supply of other launchpads' dynamic-supply configs matches Curvesmith's model exactly, so audits of foreign configs are accurate.
-
-```
-pnpm test        # 40 tests, about 3 seconds, no network needed
-```
-
-The suite runs on macOS (locally and in CI). LiteSVM 0.8's Linux native build aborts with `std::bad_alloc` while executing DBC swaps, so CI runs the tests on a macOS runner.
-
-## Devnet deployment
-
-Eleven presets are live in the devnet registry: the eight library templates (published with the CLI) and three designed and published entirely in the web Studio, including a hand-drawn freehand curve. Eight tokens have been launched from them, and two have graduated into real DAMM v2 pools: one driven by the CLI, one driven click by click through the web app (publish, launch, buy, sell, buy to graduation, graduate, claim as author, claim as creator from Earnings). Every address is in [`deployments/devnet.json`](deployments/devnet.json).
-
-| | |
-|---|---|
-| DBC program | `dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN` |
-| DAMM v2 program | `cpamdpZCGKUy5JxQXB4dcpGPiikHawvSWAd6mEn1sGG` |
-| Curvesmith registry (CSR-1) | `3cjzSdeXvwoke4238hghUi6dzo7cNhousyR19mNjzsBR` |
-
-## Quick start
-
-Requirements: Node 20+, pnpm.
+Use Node.js 22 and the pnpm version pinned in `package.json`.
 
 ```bash
-pnpm install
-pnpm dev          # the web app at http://localhost:5173
-pnpm test         # differential and lifecycle tests on the real programs
+pnpm install --frozen-lockfile
+pnpm dev            # http://localhost:5173
+pnpm typecheck      # all workspace packages
+pnpm test           # offline unit, differential, and lifecycle tests
+pnpm build          # apps/web/dist
 ```
 
-**Try the whole lifecycle in two minutes, no wallet extension needed:** on devnet the wallet menu offers a **Devnet Burner**, a throwaway in-browser wallet. Fund it from the network menu (Airdrop 1 SOL, or copy its address into https://faucet.solana.com), then open the **Micro Speedrun** preset: its raise is only 0.4 SOL, so one wallet can launch a token, buy it to graduation, crank it into DAMM v2 and claim both author and creator fees. Phantom, Solflare and Backpack work too (Phantom: Settings, Developer settings, Testnet mode).
+Tests run sequentially on macOS in CI because the pinned LiteSVM Linux build has a documented native-memory failure. Deployment requires passing tests and a production build.
 
-### Deploying the web app
-
-The app is a static site (`apps/web/dist`) that works from any path. `.github/workflows/pages.yml` tests, builds and deploys it to GitHub Pages on every push to `main` (enable it once under Settings, Pages, Source: GitHub Actions).
-
-Before deploying, refresh the registry snapshot so the marketplace paints instantly even when the public RPC is throttled; live chain data replaces it as it loads:
+## Reproduce the report
 
 ```bash
-pnpm snapshot     # writes apps/web/public/registry-devnet.json
+# Read-only: no keypair or SOL required. Full scans can download hundreds of MB.
+pnpm cli -n mainnet-beta census --limit 5000 --cache .cache/census-new
+# Resume a partially completed collection, or recompute from a complete archive:
+pnpm cli -n mainnet-beta census --limit 5000 --cache .cache/census-new --resume
+pnpm cli -n mainnet-beta census --limit 5000 --cache .cache/census-new --offline
+
+pnpm cli -n mainnet-beta audit <config-address>
+pnpm cli verify-receipt <downloaded-receipt.json>
+pnpm cli inspect fair-meme
 ```
 
-Set `VITE_RPC_DEVNET` / `VITE_RPC_MAINNET` at build time to ship a better default RPC; users can also paste their own in the network menu.
+`census` defaults to devnet like the rest of the CLI; explicitly select `-n mainnet-beta` for the mainnet report. Supply `-u <rpc-url>` before the command if the public endpoint limits scans. The raw archive stays local in `.cache/`; the compact report and selected account evidence ship in `apps/web/public/`.
 
-### CLI
+## Try the lifecycle on devnet
+
+Open **Presets**, connect a Devnet Burner wallet, fund it through the network menu or [Solana's faucet](https://faucet.solana.com), then choose **Micro Speedrun**. Launch, buy until the curve completes, migrate into DAMM v2, and inspect Earnings. Devnet tokens have no monetary value.
 
 ```bash
-pnpm cli presets                                   # library templates with grades
-pnpm cli inspect fair-meme                         # analyze, simulate and lint a template
-pnpm cli -n mainnet-beta inspect <config-address>  # audit any DBC config on chain
-pnpm cli keygen && pnpm cli airdrop 1              # devnet wallet in .keys/ (gitignored)
-pnpm cli publish speedrun                          # create config + registry listing
-pnpm cli list                                      # read the registry
-pnpm cli launch <config> --name "My Token" --symbol MINE --buy 0.1
-pnpm cli buy <pool> 0.5 | pnpm cli sell <pool> all
-pnpm cli status <pool> | pnpm cli graduate <pool> | pnpm cli claim <pool>
-pnpm cli keeper                                    # graduate every completed pool of listed presets
-pnpm cli snapshot                                  # static registry copy for the web app
+pnpm cli presets
+pnpm cli keygen
+pnpm cli airdrop 1
+pnpm cli publish speedrun
+pnpm snapshot       # refresh the devnet marketplace snapshot
 ```
 
-### MCP server (for Claude and other agents)
+Other commands include `launch`, `buy`, `sell`, `status`, `graduate`, `claim`, and `keeper`. Transactions require a funded signer. Keep private keys in ignored files; the read-only census and audit never need them.
+
+## Agents and integration
 
 ```json
 {
   "mcpServers": {
-    "curvesmith": { "command": "pnpm", "args": ["--dir", "/path/to/Meteora-DBC", "mcp"] }
+    "launchproof": {
+      "command": "pnpm",
+      "args": ["--dir", "/absolute/path/to/Launchproof", "mcp"]
+    }
   }
 }
 ```
 
-Tools: `list_templates`, `get_template`, `evaluate_preset`, `simulate_preset`, `compare_presets`, `inspect_config`, `list_marketplace`, `pool_status`, `quote_swap`, `build_publish_transactions`, `build_launch_transaction`, `build_swap_transaction`. The server never sees a private key: write tools return base64 transactions for the agent's wallet to sign.
+The MCP exposes `audit_config`, `inspect_config`, template evaluation and simulation, market/pool reads, and transaction builders. Builders return transactions for an external wallet to sign. RPC overrides: `LAUNCHPROOF_RPC_DEVNET` and `LAUNCHPROOF_RPC_MAINNET`. Browser defaults use `VITE_RPC_DEVNET` and `VITE_RPC_MAINNET`; these values are public in the bundle.
 
-## Architecture
+## Repository map
 
-```
-packages/core     @curvesmith/core: everything that matters, framework free
-  preset.ts         PresetSpec: the human-level description of a launch
-  curve.ts          shape -> 16-segment DBC curve compiler (+ curve sampling)
-  onchain.ts        ConfigParameters -> the PoolConfig account the program writes
-  sim/pool.ts       SimPool: stateful DBC pool, SDK quote math + ported state transition
-  sim/scenario.ts   seeded agent-based market scenarios
-  sim/migration.ts  graduation prediction (DAMM v2 amounts, fees, surplus, LP split)
-  analysis.ts       headline economics       lint.ts   findings + health score
-  registry.ts       CSR-1 on-chain registry   chain.ts  tx builders + live stats
-  test/             LiteSVM harness, differential, lifecycle and unit tests
-packages/cli      curvesmith CLI (and the devnet seed script)
-packages/mcp      MCP server
-apps/web          React app: Marketplace, Studio, preset pages, Launch, Token, Earnings
-```
+| Path | Purpose |
+| --- | --- |
+| `packages/core/src/` | Config audits, receipts, curve math, simulation, registry, transaction builders |
+| `packages/core/test/` | Regression tests and LiteSVM fixtures |
+| `packages/cli/src/` | CLI and reproducible census collector |
+| `packages/mcp/src/` | MCP tools |
+| `apps/web/` | React/Vite static frontend and report artifacts |
+| `docs/CENSUS.md` | Data methodology, policy, and limitations |
+| `docs/SUBMISSION.md` | Submission narrative, demo plan, and remaining launch work |
 
-The app is a static site with no backend: the chain is the database. See [docs/GUIDE.md](docs/GUIDE.md) for a full walkthrough of the design, the math, and every trade-off, and [docs/CSR-1.md](docs/CSR-1.md) for the registry spec.
-
-## Limitations
-
-- Simulations model market behaviour with simple agents. They are exact about what the pool does for a given sequence of trades, not predictions of what people will do.
-- The registry is read with `getSignaturesForAddress` plus one transaction fetch per listing. That is fine for thousands of listings; a cached indexer would sit in front beyond that. Public RPCs throttle these reads: the shipped snapshot covers first paint, reads retry with backoff, and a custom endpoint can be set in the network menu.
-- The Devnet Burner keeps its key in browser storage. It exists only on devnet and only for trying the app.
-- Token metadata URIs are supplied by the creator; the app does not host images.
-- Transfer-hook (Token-2022) pools and token-badge quote mints are supported by DBC but not exposed in the Studio yet.
+Launchproof was developed under the working name Curvesmith. Package names and branding changed; the CSR-1 seed `curvesmith:registry:v1` and `csr1:` memo prefix remain unchanged so existing listings continue to resolve. [Registry specification](docs/CSR-1.md).
 
 ## License
 
-MIT
+MIT. See [LICENSE](LICENSE). Program binary fixtures are upstream Meteora artifacts used for integration tests; their upstream licensing applies.

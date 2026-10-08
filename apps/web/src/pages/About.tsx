@@ -54,11 +54,11 @@ function Flow() {
 export function About() {
     return (
         <div className="mx-auto max-w-3xl">
-            <h1 className="text-4xl font-semibold tracking-tight">How Launchproof works</h1>
+            <h1 className="text-4xl font-semibold tracking-tight">From configuration evidence to a working launch</h1>
             <p className="mt-3 text-[15px] leading-relaxed text-ink-2">
-                Meteora's Dynamic Bonding Curve (DBC) lets a token discover its price on a configurable curve, then graduate into a DAMM v2 pool once a
+                Start with the State of DBC report or paste a config into the auditor. Download its account bytes and reproduce the review offline. Then use the Studio to design and test your own terms. Meteora's Dynamic Bonding Curve (DBC) lets a token discover its price on a configurable curve, then graduate into a DAMM v2 pool once a
                 raise is met. A DBC <em>config</em> fixes everything about that launch: up to 16 curve segments, fee schedules, who owns the graduated
-                liquidity. Today those configs are ~40 raw numbers that each launchpad hand-tunes and deploys blind. Launchproof turns them into designed,
+                liquidity. Those configs encode curve geometry, fees, supply allocation, and permissions. Launchproof turns them into designed,
                 tested, shareable products.
             </p>
 
@@ -85,7 +85,7 @@ export function About() {
                 <Step n={4} title="Review before you publish">
                     The lint pass runs the SDK's protocol validation (what the chain would reject) and economic checks the chain happily accepts but
                     traders pay for: no sniper tax, unlocked LP, thin graduated pools, retained mint authority, value skimmed at graduation. Findings from
-                    simulation (sniper ROI, graduation time) feed a 0-100 launch health score.
+                    simulation (sniper ROI, graduation time) feed a heuristic 0-100 design score. It is separate from the mainnet report policy and is not a safety certification.
                 </Step>
                 <Step n={5} title="Publish: your preset becomes your launchpad">
                     Publishing creates a DBC config whose fee claimer is your wallet. Every token launched from it pays you the partner share of its

@@ -10,6 +10,7 @@ import { compilePreset, CurvePlan, CurvePoint, geometryOf, quoteDecimals, sample
 import { deriveConfigState, migrationQuoteAmount } from './onchain'
 import { PresetSpec } from './preset'
 import { baseFeeBpsAt } from './sim/scenario'
+import { residualSupply } from './audit'
 
 export interface PresetAnalysis {
     quoteSymbol: string
@@ -30,6 +31,7 @@ export interface PresetAnalysis {
     /** Tokens neither sold nor paired: unused buffer, returned to the leftover receiver. */
     leftover: number
     leftoverPct: number
+    burnedPct: number
     /** Quote side of the graduated pool. */
     graduationQuote: number
     /** Average price paid on the curve, and the multiple the average buyer sits at on graduation. */
@@ -112,7 +114,8 @@ export function computeAnalysis(
     const toLiquidity = toB(config.migrationBaseThreshold)
     const lv = config.lockedVestingConfig
     const vesting = toB(lv.amountPerPeriod.mul(lv.numberOfPeriod).add(lv.cliffUnlockAmount))
-    const leftover = Math.max(0, o.supply - sold - toLiquidity - vesting)
+    const residual = residualSupply(config)
+    const leftover = toB(residual.leftover)
     const graduationQuote = toQ(migrationQuoteAmount(config.migrationQuoteThreshold, config.migrationFeePercentage))
 
     // opening impact: walk the sampled curve to 1% of the raise
@@ -144,6 +147,7 @@ export function computeAnalysis(
         creatorAllocationPct: o.creatorAllocationPct,
         leftover,
         leftoverPct: (leftover / o.supply) * 100,
+        burnedPct: (toB(residual.burned) / o.supply) * 100,
         graduationQuote,
         avgPrice,
         avgBuyerMultiple: avgPrice > 0 ? endPrice / avgPrice : 0,

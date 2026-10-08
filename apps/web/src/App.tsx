@@ -3,6 +3,7 @@ import { Route, Routes } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { Spinner } from './components/ui'
 import { Marketplace } from './pages/Marketplace'
+import { Report } from './pages/Report'
 
 // The Studio pulls in the most UI; split it and the rarer pages out of the first load.
 const Studio = lazy(() => import('./pages/Studio').then((m) => ({ default: m.Studio })))
@@ -12,6 +13,7 @@ const Launch = lazy(() => import('./pages/Launch').then((m) => ({ default: m.Lau
 const TokenPage = lazy(() => import('./pages/TokenPage').then((m) => ({ default: m.TokenPage })))
 const Earnings = lazy(() => import('./pages/Earnings').then((m) => ({ default: m.Earnings })))
 const About = lazy(() => import('./pages/About').then((m) => ({ default: m.About })))
+const Audit = lazy(() => import('./pages/Audit').then((m) => ({ default: m.Audit })))
 
 export function App() {
     return (
@@ -24,7 +26,10 @@ export function App() {
                 }
             >
                 <Routes>
-                    <Route path="/" element={<Marketplace />} />
+                    <Route path="/" element={<Report />} />
+                    <Route path="/report" element={<Report />} />
+                    <Route path="/audit/:address" element={<Audit />} />
+                    <Route path="/market" element={<Marketplace />} />
                     <Route path="/studio" element={<Studio />} />
                     <Route path="/t/:id" element={<TemplatePage />} />
                     <Route path="/p/:config" element={<PresetPage />} />

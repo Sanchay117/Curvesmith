@@ -32,10 +32,16 @@ function useTheme() {
 function Logo() {
     return (
         <Link to="/" className="flex items-center gap-2.5">
+            {/* the mark: a checkmark whose rising stroke is a bonding curve, i.e. a proven curve */}
             <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden>
-                <rect width="32" height="32" rx="8" fill="var(--surface-2)" />
-                <path d="M6 25 C 12 24, 15 20, 17 14 S 22 7, 26 7" fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" />
-                <circle cx="26" cy="7" r="2.6" fill="var(--s4)" />
+                <defs>
+                    <linearGradient id="lp-mark" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0" stopColor="#7b6bff" />
+                        <stop offset="1" stopColor="#4c37d9" />
+                    </linearGradient>
+                </defs>
+                <rect width="32" height="32" rx="8" fill="url(#lp-mark)" />
+                <path d="M8 16.6 L13.4 21.8 C 16.6 16.4, 19.6 11.4, 24.6 8.6" fill="none" stroke="#fff" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             <span className="hidden text-[17px] font-semibold tracking-tight sm:inline">Launchproof</span>
         </Link>
@@ -156,7 +162,8 @@ export function Layout({ children }: { children: ReactNode }) {
     const closeSettings = useCallback(() => setOpen(false), [])
     const settingsRef = useDismiss(open, closeSettings)
     const nav = [
-        { to: '/', label: 'Marketplace' },
+        { to: '/', label: 'State of DBC' },
+        { to: '/market', label: 'Presets' },
         { to: '/studio', label: 'Studio' },
         { to: '/earnings', label: 'Earnings' },
         { to: '/about', label: 'How it works' },

@@ -27,6 +27,7 @@ import BN from 'bn.js'
 import Decimal from 'decimal.js'
 import { getPriceFromSqrtPrice } from '@meteora-ag/dynamic-bonding-curve-sdk'
 import {
+    auditConfig,
     buildClaimTransaction,
     buildLaunchTransaction,
     buildMigrateTransaction,
@@ -34,6 +35,7 @@ import {
     buildSnapshot,
     buildSwapTransaction,
     chainTime,
+    clonePreset,
     dbcClient,
     DEFAULT_RPC,
     evaluateConfig,
@@ -49,12 +51,15 @@ import {
     PresetSpec,
     PRESET_SCHEMA,
     quoteAssetByMint,
+    requireQuoteAsset,
     quoteSwap,
     SCENARIOS,
     simulate,
     specFromConfig,
     withRetry,
+    verifyAuditReceipt,
 } from '@launchproof/core'
+import { buildCensus, verifyCensus } from './census'
 
 // ---------------------------------------------------------------------------------------
 // plumbing
@@ -74,6 +79,39 @@ program
     .option('-u, --rpc <url>', 'RPC endpoint (defaults to the public one for the network)')
     .option('-k, --keypair <path>', 'signer keypair JSON (default .keys/id.json, then ~/.config/solana/id.json)')
 
+program.command('census')
+    .description('scan standard DBC pools and audit the most-used configs; read-only, no wallet required')
+    .option('--limit <number>', 'maximum configs to audit', '5000')
+    .option('--out <file>', 'report JSON output; defaults to apps/web/public/census-<network>.json')
+    .option('--cache <directory>', 'raw RPC evidence archive', '.cache/census')
+    .option('--resume', 'reuse completed requests from this archive')
+    .option('--offline', 'rebuild entirely from archived responses')
+    .action(run(async (o: { limit: string; out?: string; cache: string; resume?: boolean; offline?: boolean }) => {
+        const c = ctx()
+        await buildCensus(c.connection.rpcEndpoint, c.network, { ...o, limit: Number(o.limit), out: path.resolve(userCwd, o.out ?? `apps/web/public/census-${c.network}.json`), cache: path.resolve(userCwd, o.cache) })
+    }))
+
+program.command('verify-receipt <file>')
+    .description('reproduce a downloaded audit receipt offline; does not prove chain inclusion')
+    .action(run(async (file: string) => {
+        const receipt = JSON.parse(fs.readFileSync(path.resolve(userCwd, file), 'utf8'))
+        verifyAuditReceipt(receipt)
+        console.log(`Verified account hash and reproduced config review for ${receipt.address}. Observation metadata and chain inclusion are not independently verified.`)
+    }))
+
+program.command('verify-census <file>')
+    .description('verify published config reviews and sample layouts against the companion evidence archive, offline')
+    .action(run(async (file: string) => verifyCensus(path.resolve(userCwd, file))))
+
+program.command('audit <address>')
+    .description('review raw config fields without assuming its quote mint or simulating unsupported modes')
+    .action(run(async (address: string) => {
+        const c = ctx()
+        const config = await dbcClient(c.connection).state.getPoolConfig(new PublicKey(address))
+        if (!config) throw new Error('DBC config not found')
+        console.log(JSON.stringify({ address, network: c.network, ...auditConfig(config, c.network) }, null, 2))
+    }))
+
 /** Where the user ran the command (pnpm scripts change cwd to the package; INIT_CWD keeps the original). */
 const userCwd = process.env.INIT_CWD ?? process.cwd()
 
@@ -82,7 +120,7 @@ function ctx(): Ctx {
     const network = (o.network === 'mainnet' ? 'mainnet-beta' : o.network) as Network
     if (network !== 'devnet' && network !== 'mainnet-beta') throw new Error(`unknown network ${o.network}`)
     const local = path.resolve(userCwd, '.keys/id.json')
-    const keypairPath = o.keypair ?? (fs.existsSync(local) ? local : path.join(os.homedir(), '.config/solana/id.json'))
+    const keypairPath = o.keypair ? path.resolve(userCwd, o.keypair) : fs.existsSync(local) ? local : path.join(os.homedir(), '.config/solana/id.json')
     return { network, connection: new Connection(o.rpc ?? DEFAULT_RPC[network], 'confirmed'), keypairPath }
 }
 
@@ -113,7 +151,7 @@ const fmt = (x: number, d = 2) =>
 const pad = (s: string, n: number) => (s.length >= n ? s : s + ' '.repeat(n - s.length))
 
 function quoteDecimalsOf(c: Ctx, mint: PublicKey) {
-    return quoteAssetByMint(c.network, mint) ?? { symbol: 'quote', decimals: 9, mint }
+    return requireQuoteAsset(c.network, mint)
 }
 
 function printEvaluation(ev: Evaluation, scenarioId?: string) {
@@ -159,10 +197,10 @@ function run(fn: (...args: any[]) => Promise<void>) {
 
 program
     .command('keygen')
-    .description('create .keys/id.json (never commit it)')
+    .description('create .keys/id.json, or the file given with -k (never commit it)')
     .action(
         run(async () => {
-            const p = path.resolve(userCwd, '.keys/id.json')
+            const p = path.resolve(userCwd, program.opts<{ keypair?: string }>().keypair ?? '.keys/id.json')
             if (fs.existsSync(p)) throw new Error(`${p} already exists`)
             fs.mkdirSync(path.dirname(p), { recursive: true })
             const kp = Keypair.generate()
@@ -225,14 +263,26 @@ program
 program
     .command('publish <spec>')
     .description('create a DBC config you own and list it in the registry')
+    .option('--raise <amount>', 'rescale both market caps so the curve raises this much quote (same shape)')
+    .option('--name <name>', 'listing name')
     .action(
-        run(async (arg: string) => {
+        run(async (arg: string, o: { raise?: string; name?: string }) => {
             const c = ctx()
             const me = signer(c)
-            const spec = loadSpec(arg)
+            const spec = clonePreset(loadSpec(arg))
+            if (o.name) spec.name = o.name
+            if (o.raise) {
+                // for a fixed shape the raise scales linearly with market cap (see the Studio's "Solve for a raise")
+                const k = Number(o.raise) / evaluatePreset(spec).analyzed.analysis.raise
+                if (!(k > 0)) throw new Error(`invalid --raise ${o.raise}`)
+                spec.pricing.startMcap *= k
+                spec.pricing.endMcap = Math.max(spec.pricing.endMcap * k, spec.pricing.startMcap * 1.01)
+            }
             const ev = evaluatePreset(spec)
             if (ev.lint.findings.some((f) => f.severity === 'critical')) throw new Error('preset has critical findings; run inspect')
-            console.log(`publishing "${spec.name}" to ${c.network} as ${me.publicKey.toBase58()}`)
+            console.log(
+                `publishing "${spec.name}" (raise ${fmt(ev.analyzed.analysis.raise, 4)} ${spec.quote}, grade ${ev.lint.grade} ${ev.lint.score}/100) to ${c.network} as ${me.publicKey.toBase58()}`
+            )
             const plan = await buildPublishTransactions(c.connection, c.network, me.publicKey, spec)
             await send(c, plan.createConfigTx, [me, plan.config], 'create config')
             await send(c, plan.listingTx, [me], 'registry listing')

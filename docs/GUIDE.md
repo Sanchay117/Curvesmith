@@ -1,6 +1,6 @@
-# Curvesmith: the complete guide
+# Launchproof: the complete guide
 
-This document explains the project end to end for someone who knows computer science but is new to Solana and DeFi: the concepts, the idea, the architecture, how each piece works, and why each decision was made (including the alternatives that were rejected).
+For census methodology, limitations, and receipt verification, start with [CENSUS.md](CENSUS.md). This document explains the project end to end for someone who knows computer science but is new to Solana and DeFi: the concepts, the idea, the architecture, how each piece works, and why each decision was made (including the alternatives that were rejected).
 
 Contents
 
@@ -21,7 +21,7 @@ Contents
 
 **Programs.** Smart contracts. They are stateless code; all state lives in accounts passed into each call. Meteora's DBC is one program (`dbcij3LW...`); its DAMM v2 AMM is another (`cpamdpZC...`).
 
-**Transactions and instructions.** A transaction is a list of *instructions* (program + accounts + data) that execute atomically, signed by the required keys. Size limit: **1232 bytes**. Compute limit: 200k compute units (CU) per instruction by default, up to 1.4M per transaction if you ask with a `ComputeBudget` instruction. (Curvesmith hit both limits; see 5.8.)
+**Transactions and instructions.** A transaction is a list of *instructions* (program + accounts + data) that execute atomically, signed by the required keys. Size limit: **1232 bytes**. Compute limit: 200k compute units (CU) per instruction by default, up to 1.4M per transaction if you ask with a `ComputeBudget` instruction. (Launchproof hit both limits; see 5.8.)
 
 **Signers.** Any account marked as a signer must sign. New accounts created at a fresh address (a DBC config, a token mint) need that address's keypair to sign once, which is why the app generates a keypair, *partially signs* with it, and then asks the wallet to sign too.
 
@@ -39,7 +39,7 @@ Contents
 
 A **bonding curve** sells a new token along a price function: each purchase moves the price up, each sale moves it down, and there is no order book or initial liquidity provider. DBC implements this as a *virtual pool*.
 
-**Two roles.** A *partner* (normally a launchpad) creates a **config**: the rules. A *creator* launches a **pool** (a token) from a config. Many pools share one config. The partner is the config's `fee_claimer` and earns a share of every pool's fees. Curvesmith's key insight is that **a preset author is exactly a DBC partner**, so "publishing a preset" means becoming a micro-launchpad that earns from everything launched with your design.
+**Two roles.** A *partner* (normally a launchpad) creates a **config**: the rules. A *creator* launches a **pool** (a token) from a config. Many pools share one config. The partner is the config's `fee_claimer` and earns a share of every pool's fees. Launchproof's key insight is that **a preset author is exactly a DBC partner**, so "publishing a preset" means becoming a micro-launchpad that earns from everything launched with your design.
 
 **The curve.** Prices are stored as square roots in Q64.64 fixed point (`sqrtPrice * 2^64` as a u128). The curve is up to 16 segments; segment *i* covers `[sqrtP_i, sqrtP_{i+1}]` with liquidity `L_i`, and inside a segment it behaves like a constant-product AMM:
 
@@ -58,7 +58,7 @@ The bounty judges on: depth of Meteora integration, technical quality, originali
 
 Most submissions to a bounty like this will be launchpads: a pump.fun-style site on top of one hard-coded config. That shows integration but not much else.
 
-Curvesmith goes one level up: **it is infrastructure for every launchpad and creator**. It hits nearly every item on Meteora's list with one coherent product:
+Launchproof goes one level up: **it is infrastructure for every launchpad and creator**. It hits nearly every item on Meteora's list with one coherent product:
 
 - the marketplace is the explicit #1 ask, and the partner-fee model makes it economically self-sustaining (authors are paid by the protocol itself, no new token or fee needed);
 - the curve compiler makes "novel curves" a design surface instead of hand math, and the library ships flat NAV sales and IPO-style tranches for RWAs and equities;
@@ -72,13 +72,13 @@ Curvesmith goes one level up: **it is infrastructure for every launchpad and cre
 | Another launchpad (fork of Meteora's fun-launch scaffold) | Crowded, low originality, judged mostly on traction we cannot produce in a week |
 | Trading-terminal data stream / indexer | Useful but needs paid infrastructure to be credible, and is invisible in a demo |
 | Custom Anchor program that CPIs into DBC | More "depth" on paper, but a new program to write, test and audit in a week, with real risk of shipping something broken. DBC already provides everything needed (partner = author), so a program would add risk, not capability |
-| AI-only config generator | A thin wrapper; becomes credible only once there is a trustworthy simulator underneath, which is what Curvesmith builds first (the MCP server then gives agents that capability) |
+| AI-only config generator | A thin wrapper; becomes credible only once there is a trustworthy simulator underneath, which is what Launchproof builds first (the MCP server then gives agents that capability) |
 
 ## 4. Architecture at a glance
 
 ```
               +----------------------------------------------+
-              |            @curvesmith/core  (TypeScript)    |
+              |            @launchproof/core  (TypeScript)    |
               |  preset -> curve compiler -> ConfigParameters |
               |  onchain derivation -> SimPool -> scenarios   |
               |  analysis -> lint -> health score             |
@@ -99,7 +99,7 @@ Curvesmith goes one level up: **it is infrastructure for every launchpad and cre
 
 **Decision: no backend.** The web app is a static site. The chain is the database: presets come from the CSR-1 registry, stats from `getProgramAccounts`, pool state from account reads. Benefits: free to host (GitHub Pages, IPFS), nothing to keep running, nothing to trust. Cost: every page load does several RPC reads, and public RPCs rate-limit (users can paste their own RPC in the network menu).
 
-**Decision: monorepo with pnpm workspaces.** Internal packages are consumed as TypeScript source (no build step between them), which keeps iteration fast. To publish `@curvesmith/core` to npm later, add a `tsup` build.
+**Decision: monorepo with pnpm workspaces.** Internal packages are consumed as TypeScript source (no build step between them), which keeps iteration fast. To publish `@launchproof/core` to npm later, add a `tsup` build.
 
 ## 5. Deep dives
 
@@ -181,7 +181,7 @@ Lessons from real runs:
 - **Responsiveness**: evaluation (compile + two simulations + lint) takes tens of milliseconds, so the Studio uses `useDeferredValue` to keep sliders smooth and shows the last valid design (dimmed) when an edit does not compile. Marketplace cards evaluate after first paint and share a cache with detail pages.
 - **Charts** are hand-written SVG (crosshair, tooltip, legend, log scale) following a validated palette, so they theme cleanly in dark and light mode without a charting dependency.
 - **Devnet Burner wallet** (`src/lib/burner.ts`): a small wallet-adapter implementation with its key in localStorage, offered only on devnet, so anyone can try every flow without installing or configuring a wallet extension.
-- **Registry snapshot** (`curvesmith snapshot`, `src/lib/queries.ts`): the build ships a static copy of the registry and preset stats. Pages paint from it instantly, then live chain data replaces it (stale-while-revalidate); if the live read fails after retries, the snapshot stays on screen instead of an error. Config accounts are stored as raw bytes and decoded with the DBC program's own coder, so the snapshot cannot drift from the real account layout.
+- **Registry snapshot** (`launchproof snapshot`, `src/lib/queries.ts`): the build ships a static copy of the registry and preset stats. Pages paint from it instantly, then live chain data replaces it (stale-while-revalidate); if the live read fails after retries, the snapshot stays on screen instead of an error. Config accounts are stored as raw bytes and decoded with the DBC program's own coder, so the snapshot cannot drift from the real account layout.
 
 ### 5.10 What testing against the real chain taught us
 
@@ -240,21 +240,21 @@ The earlier bugs found by the LiteSVM suite (graduation amount rounding up, not 
 
 ```bash
 pnpm install
-pnpm test                 # 40 tests against the real programs in LiteSVM
+pnpm test                 # unit, differential, and lifecycle tests in LiteSVM
 pnpm dev                  # the app
 pnpm cli inspect fair-meme
-pnpm --filter @curvesmith/web build   # static site in apps/web/dist
+pnpm --filter @launchproof/web build   # static site in apps/web/dist
 ```
 
 **Suggested 3-minute demo.**
-1. Marketplace: live devnet presets with grades and launch counts; template library.
+1. State of DBC: observation window, audit coverage, pool-weighted findings, and source account archive. Then open Presets for the devnet marketplace.
 2. Studio: start from Fair Meme, switch the shape to Tranches and then Freehand, watch the curve, supply split and grade update; open Simulate and compare Sniper rush ROI with the fee decay on versus a flat 1% fee.
-3. Paste the mainnet config `2bFH5q216w51UopEZP359NGGSUUeCwmycoBzP8Jc83at` into `/#/p/<address>` (with a mainnet RPC) to show an F-graded audit of a live launchpad.
+3. Open State of DBC, inspect a config, download its audit receipt, and reproduce it with `pnpm cli verify-receipt <file>`. Explain snapshot coverage and the difference between migration and demand.
 4. With the Devnet Burner: open Micro Speedrun, launch a token with a first buy, buy it to graduation (the quote shows the partial fill), click Graduate to DAMM v2, then claim author and creator fees on the Earnings page. Watch the sniper fee decay live in the buy quote during the first 30 seconds.
 5. Show `pnpm test` passing and the MCP server answering `simulate_preset`.
 
 **Before submitting** (things only you can do):
 - Record the pitch video (2 to 3 minutes) and the demo video (3 minutes or less).
-- Push the repo (it is at `github.com/Sanchay117/Curvesmith`); keep it public, or grant `dannxbt` read access.
+- Push the repo (it is at `github.com/Sanchay117/Launchproof`); keep it public, or grant `dannxbt` read access.
 - Run `pnpm snapshot`, commit the refreshed `apps/web/public/registry-devnet.json`, push, and enable GitHub Pages (Settings, Pages, Source: GitHub Actions). The workflow in `.github/workflows/pages.yml` tests, builds and deploys on every push to `main`.
 - Optionally publish one or two presets on mainnet with a small amount of SOL (about 0.01 SOL of rent each) for the traction criterion: `pnpm cli -n mainnet-beta -k <your keypair> publish fair-meme`.

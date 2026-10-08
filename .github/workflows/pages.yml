@@ -3,6 +3,7 @@ name: Deploy web app to GitHub Pages
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -28,9 +29,10 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
       - run: pnpm test
 
-  # The site build is independent of the test job so a test issue never blocks the deploy.
+  # Build and tests run independently; deployment requires both to pass.
   build:
     runs-on: ubuntu-latest
     steps:
@@ -47,7 +49,8 @@ jobs:
           path: apps/web/dist
 
   deploy:
-    needs: build
+    needs: [build, test]
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

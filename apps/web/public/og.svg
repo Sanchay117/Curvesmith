@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+<defs>
+<linearGradient id="mark" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7b6bff"/><stop offset="1" stop-color="#4c37d9"/></linearGradient>
+<linearGradient id="glow" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9d8fff" stop-opacity="0"/><stop offset="1" stop-color="#9d8fff" stop-opacity="0.9"/></linearGradient>
+</defs>
+<rect width="1200" height="630" fill="#0a0b0f"/>
+<path d="M790 115V520M885 115V520M980 115V520M1075 115V520M720 210H1140M720 305H1140M720 400H1140M720 495H1140" stroke="#1b1e26"/>
+<rect x="64" y="55" width="44" height="44" rx="11" fill="url(#mark)"/>
+<path d="M75 78.8 L82.4 86 C 86.8 78.6, 91 71.7, 97.8 67.8" fill="none" stroke="#fff" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="124" y="87" fill="#fff" font-family="Arial, sans-serif" font-size="31" font-weight="700">Launchproof</text>
+<text x="64" y="185" fill="#9d8fff" font-family="Arial, sans-serif" font-size="17" font-weight="700" letter-spacing="4">STATE OF DBC</text>
+<text x="60" y="285" fill="#fff" font-family="Arial, sans-serif" font-size="73" font-weight="700" letter-spacing="-3">Read the terms.</text>
+<text x="60" y="371" fill="#fff" font-family="Arial, sans-serif" font-size="73" font-weight="700" letter-spacing="-3">Before the launch.</text>
+<text x="64" y="440" fill="#c1c5d0" font-family="Arial, sans-serif" font-size="23">Mainnet configuration reviews. Reproducible evidence.</text>
+<path d="M760 430 L840 488 C 900 400, 960 300, 1080 215" fill="none" stroke="url(#glow)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="1080" cy="215" r="13" fill="#9d8fff"/>
+<path d="M64 511H1136" stroke="#333845"/>
+<text x="64" y="565" fill="#8a8f9d" font-family="Arial, sans-serif" font-size="19">Built on Meteora DBC + DAMM v2</text>
+<text x="790" y="565" fill="#c1c5d0" font-family="Arial, sans-serif" font-size="19">Audit · Simulate · Launch</text>
+</svg>

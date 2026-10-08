@@ -19,7 +19,7 @@ import {
     SwapMode,
 } from '@meteora-ag/dynamic-bonding-curve-sdk'
 import { Svm } from './svm'
-import { compilePreset, LIBRARY, predictMigration, SimPool } from '../src'
+import { compilePreset, LIBRARY, predictMigration, readPoolCensusFields, SimPool } from '../src'
 
 describe('lifecycle on real programs', () => {
     test('Speedrun preset: launch, graduate, migrate to DAMM v2, claim', async () => {
@@ -64,6 +64,7 @@ describe('lifecycle on real programs', () => {
         env.send(launchTx, [creator, baseMint])
         const poolAddr = deriveDbcPoolAddress(NATIVE_MINT, baseMint.publicKey, configKp.publicKey)
         const afterLaunch = (await client.state.getPool(poolAddr))!.poolState
+        expect(readPoolCensusFields(env.svm.getAccount(poolAddr)!.data)).toEqual({ config: configKp.publicKey.toBase58(), migrated: false })
         // the creator's bundled buy paid the minimum (end) fee, not the 10% opening fee
         const feePaid = afterLaunch.metrics.totalTradingQuoteFee.add(afterLaunch.metrics.totalProtocolQuoteFee)
         expect(feePaid.muln(10_000).div(firstBuy).toNumber()).toBeLessThanOrEqual(101)
@@ -112,6 +113,7 @@ describe('lifecycle on real programs', () => {
 
         const migrated = (await client.state.getPool(poolAddr))!.poolState
         expect(migrated.isMigrated).toBe(1)
+        expect(readPoolCensusFields(env.svm.getAccount(poolAddr)!.data)).toEqual({ config: configKp.publicKey.toBase58(), migrated: true })
 
         const dammAddr = deriveDammV2PoolAddress(dammConfig, baseMint.publicKey, NATIVE_MINT)
         const damm = createDammV2Program(env.connection)

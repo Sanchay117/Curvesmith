@@ -1,4 +1,4 @@
-# CSR-1: Curvesmith Registry
+# CSR-1: Curve Spec Registry
 
 A permissionless, indexer-free registry of DBC launch presets that lives entirely in Solana transaction history.
 
@@ -61,3 +61,5 @@ Every library listing fits in a single 1232-byte transaction (checked in `packag
 | **CSR-1 (memo + reference)** | No new program, no server, verifiable by anyone with an RPC; economics always from chain | O(n) RPC reads per refresh; public RPCs throttle `getSignaturesForAddress` |
 
 CSR-1 is the right trade at hackathon and early-production scale. Because the format is public, a cache or indexer can be added later without changing how listings are written.
+
+The seed retains the original working name for compatibility with existing listings. Launchproof does not change the CSR-1 address or memo prefix.

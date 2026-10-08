@@ -18,6 +18,7 @@ import {
     quoteDecimals,
     REGISTRY_ADDRESS,
     REGISTRY_SEED,
+    QUOTE_ASSETS,
     runScenario,
     SCENARIOS,
     sha256,
@@ -121,7 +122,7 @@ describe('registry (CSR-1)', () => {
     test('a spec rebuilt from chain recompiles to the same economics', () => {
         for (const spec of Object.values(LIBRARY)) {
             const { params } = compilePreset(spec)
-            const config = deriveConfigState(params, { quoteMint: dummy, feeClaimer: dummy, leftoverReceiver: dummy })
+            const config = deriveConfigState(params, { quoteMint: QUOTE_ASSETS.devnet[spec.quote].mint, feeClaimer: dummy, leftoverReceiver: dummy })
             const rebuilt = specFromConfig(config, 'devnet', { s: spec.pricing.shape, n: spec.name })
             expect(rebuilt.fees.schedule.startBps).toBe(spec.fees.schedule.startBps)
             expect(rebuilt.fees.creatorSharePct).toBe(spec.fees.creatorSharePct)

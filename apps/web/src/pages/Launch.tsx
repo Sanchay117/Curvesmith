@@ -48,8 +48,11 @@ export function Launch() {
     const [busy, setBusy] = useState<string | null>(null)
 
     const pc = poolConfig.data
-    const quote = pc ? (quoteAssetByMint(network, pc.quoteMint) ?? { symbol: 'quote', decimals: 9 }) : null
-    const spec = useMemo(() => (pc ? specFromConfig(pc, network, listing?.meta) : null), [pc, network, listing])
+    const quote = pc ? quoteAssetByMint(network, pc.quoteMint) : null
+    const spec = useMemo(() => {
+        try { return pc ? specFromConfig(pc, network, listing?.meta) : null }
+        catch { return null }
+    }, [pc, network, listing])
 
     // exact preview of the bundled first buy on a fresh pool
     const preview = useMemo(() => {
@@ -72,7 +75,8 @@ export function Launch() {
     }, [pc, quote, firstBuy, spec])
 
     if (poolConfig.isLoading) return <Skeleton className="h-96" />
-    if (poolConfig.error || !pc || !quote || !spec) return <Empty title="Preset not found">{(poolConfig.error as Error)?.message}</Empty>
+    if (poolConfig.error || !pc) return <Empty title="Preset not found">{(poolConfig.error as Error)?.message}</Empty>
+    if (!quote || !spec) return <Empty title="This config is available for read-only review"><Link className="text-accent hover:underline" to={`/audit/${config}?network=${network}`}>Open its configuration audit</Link>. The launch interface supports SOL/USDC, time-based fees, and DAMM v2 migration.</Empty>
 
     const valid = name.trim().length > 0 && name.length <= 32 && symbol.trim().length > 0 && symbol.length <= 10 && /^https?:\/\//.test(uri)
 

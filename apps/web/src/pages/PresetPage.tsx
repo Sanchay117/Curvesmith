@@ -268,7 +268,7 @@ export function PresetPage() {
                 </Card>
             )}
             {ev instanceof Error ? (
-                <Empty title="Could not analyze this config">{ev.message}</Empty>
+                <Empty title="Simulation unavailable for this config">{ev.message}<Link className="mt-3 block text-accent hover:underline" to={`/audit/${config}?network=${network}`}>Open the configuration audit →</Link></Empty>
             ) : ev ? (
                 <DetailBody
                     ev={ev}

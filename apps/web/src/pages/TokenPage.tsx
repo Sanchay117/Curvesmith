@@ -294,8 +294,9 @@ export function TokenPage() {
     const d = snap.data
     const s = d.pool.poolState
     const qa = quoteAssetByMint(network, d.config.quoteMint)
-    const qSym = qa?.symbol ?? 'quote'
-    const qDec = qa?.decimals ?? 9
+    if (!qa || !analyzed) return <Empty title="This pool is available for read-only review"><Link className="text-accent hover:underline" to={`/audit/${config}?network=${network}`}>Review the config</Link>. Its quote asset or configuration mode is not supported by this trading interface.</Empty>
+    const qSym = qa.symbol
+    const qDec = qa.decimals
     const meta = metas.data?.get(s.baseMint.toBase58())
     const raised = toUi(s.quoteReserve, qDec)
     const threshold = toUi(d.config.migrationQuoteThreshold, qDec)

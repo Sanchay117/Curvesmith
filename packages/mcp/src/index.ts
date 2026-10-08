@@ -17,6 +17,7 @@ import Decimal from 'decimal.js'
 import { getPriceFromSqrtPrice } from '@meteora-ag/dynamic-bonding-curve-sdk'
 import {
     buildLaunchTransaction,
+    auditConfig,
     buildPublishTransactions,
     buildSwapTransaction,
     chainTime,
@@ -33,7 +34,7 @@ import {
     presetStats,
     PresetSpec,
     PRESET_SCHEMA,
-    quoteAssetByMint,
+    requireQuoteAsset,
     quoteSwap,
     ScenarioResult,
     SCENARIOS,
@@ -151,6 +152,17 @@ tool(
 // ---- chain reads ------------------------------------------------------------------------------
 
 tool(
+    'audit_config',
+    'Review DBC config terms directly: quote identity, unlocked LP, residual supply after burns, mint authority, migration fees. No wallet, simulation, or safety certification.',
+    { address: z.string(), network: networkArg },
+    async ({ address, network }) => {
+        const config = await dbcClient(rpc(network)).state.getPoolConfig(new PublicKey(address))
+        if (!config) throw new Error(`No DBC config at ${address}`)
+        return { address, network, ...auditConfig(config, network) }
+    }
+)
+
+tool(
     'inspect_config',
     'Read any DBC config account (from any launchpad) and evaluate it: rebuilt spec, economics, simulations and findings.',
     { address: z.string(), network: networkArg },
@@ -172,8 +184,8 @@ tool(
         const listings = await fetchListings(connection)
         const out = []
         for (const l of listings) {
-            const q = quoteAssetByMint(network, l.poolConfig.quoteMint)
-            const st = await presetStats(connection, l.config, l.poolConfig, q?.decimals ?? 9)
+            const q = requireQuoteAsset(network, l.poolConfig.quoteMint)
+            const st = await presetStats(connection, l.config, l.poolConfig, q.decimals)
             out.push({ config: l.config, author: l.author, name: l.meta.n, tagline: l.meta.t, category: l.meta.g, launches: st.launches, graduated: st.graduated, feesGenerated: st.feesQuote })
         }
         return out
@@ -183,7 +195,7 @@ tool(
 tool('pool_status', 'Progress, price and claimable fees of a DBC pool.', { pool: z.string(), network: networkArg }, async ({ pool, network }) => {
     const snap = await loadPool(rpc(network), new PublicKey(pool))
     const s = snap.pool.poolState
-    const q = quoteAssetByMint(network, snap.config.quoteMint) ?? { symbol: 'quote', decimals: 9 }
+    const q = requireQuoteAsset(network, snap.config.quoteMint)
     const ui = (x: BN, d: number) => new Decimal(x.toString()).div(new Decimal(10).pow(d)).toNumber()
     return {
         config: snap.configAddress,
@@ -205,7 +217,7 @@ tool(
     async ({ pool, side, amount, network }) => {
         const connection = rpc(network)
         const snap = await loadPool(connection, new PublicKey(pool))
-        const q = quoteAssetByMint(network, snap.config.quoteMint) ?? { decimals: 9, symbol: 'quote' }
+        const q = requireQuoteAsset(network, snap.config.quoteMint)
         const inDec = side === 'buy' ? q.decimals : snap.config.tokenDecimal
         const outDec = side === 'buy' ? snap.config.tokenDecimal : q.decimals
         const r = quoteSwap(snap, side, new BN(new Decimal(amount).mul(new Decimal(10).pow(inDec)).floor().toFixed()), await chainTime(connection))
@@ -242,7 +254,7 @@ tool(
         const connection = rpc(network)
         const pc = await dbcClient(connection).state.getPoolConfig(new PublicKey(config))
         if (!pc) throw new Error('No such config')
-        const q = quoteAssetByMint(network, pc.quoteMint) ?? { decimals: 9 }
+        const q = requireQuoteAsset(network, pc.quoteMint)
         const { tx, baseMint, pool } = await buildLaunchTransaction(connection, {
             config: new PublicKey(config),
             creator: new PublicKey(creator),
@@ -263,7 +275,7 @@ tool(
     async ({ pool, owner, side, amount, slippageBps, network }) => {
         const connection = rpc(network)
         const snap = await loadPool(connection, new PublicKey(pool))
-        const q = quoteAssetByMint(network, snap.config.quoteMint) ?? { decimals: 9 }
+        const q = requireQuoteAsset(network, snap.config.quoteMint)
         const amountIn = new BN(new Decimal(amount).mul(new Decimal(10).pow(side === 'buy' ? q.decimals : snap.config.tokenDecimal)).floor().toFixed())
         const r = quoteSwap(snap, side, amountIn, await chainTime(connection))
         const minOut = r.outputAmount.muln(10_000 - slippageBps).divn(10_000)

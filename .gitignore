@@ -14,3 +14,4 @@ coverage
 .reference/
 # demo video pipeline (recordings, narration, API key)
 video/
+.cache/

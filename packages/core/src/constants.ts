@@ -53,6 +53,12 @@ export function quoteAssetByMint(network: Network, mint: PublicKey): QuoteAsset 
     return Object.values(QUOTE_ASSETS[network]).find((q) => q.mint.equals(mint))
 }
 
+export function requireQuoteAsset(network: Network, mint: PublicKey): QuoteAsset {
+    const asset = quoteAssetByMint(network, mint)
+    if (!asset) throw new Error(`Unsupported quote mint ${mint.toBase58()}; use the read-only configuration audit. Trading amounts require known mint precision.`)
+    return asset
+}
+
 export const DEFAULT_RPC: Record<Network, string> = {
     devnet: 'https://api.devnet.solana.com',
     'mainnet-beta': 'https://api.mainnet-beta.solana.com',

@@ -148,9 +148,9 @@ export function Earnings() {
     const creatorRows: Row[] = (created.data ?? []).map((snap) => {
         const qa = quoteAssetByMint(network, snap.config.quoteMint)
         const supply = new Decimal(snap.config.preMigrationTokenSupply.toString()).div(new Decimal(10).pow(snap.config.tokenDecimal)).toNumber()
-        const sum = summarizePool(snap.address, snap.pool, snap.config, qa?.decimals ?? 9, supply)
+        const sum = summarizePool(snap.address, snap.pool, snap.config, qa?.decimals ?? 0, supply)
         const l = listings.data?.find((x) => x.config.equals(snap.configAddress))
-        return { snap, who: 'creator', preset: l?.meta.n ?? 'Unlisted config', quote: sum.claimable.creatorQuote, base: sum.claimable.creatorBase, quoteSymbol: qa?.symbol ?? 'quote' }
+        return { snap, who: 'creator', preset: l?.meta.n ?? 'Unlisted config', quote: sum.claimable.creatorQuote, base: sum.claimable.creatorBase, quoteSymbol: qa?.symbol ?? 'raw quote units' }
     })
 
     const loading = listings.isLoading || stats.some((s) => s.isLoading) || created.isLoading

@@ -183,6 +183,7 @@ export function SupplyBar({ a }: { a: AnalyzedPreset }) {
                 { label: 'Graduated liquidity', value: x.liquidityPct, color: 'var(--s3)' },
                 { label: 'Creator allocation', value: x.creatorAllocationPct, color: 'var(--s4)' },
                 { label: 'Leftover', value: x.leftoverPct, color: 'var(--muted)' },
+                { label: 'Burned at migration', value: x.burnedPct, color: 'var(--surface-3)' },
             ]}
         />
     )

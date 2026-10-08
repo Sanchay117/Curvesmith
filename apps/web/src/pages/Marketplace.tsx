@@ -165,7 +165,7 @@ export function Marketplace() {
 
             {address && (
                 <Link
-                    to={`/p/${address}`}
+                    to={`/audit/${address}?network=${network}`}
                     className="mb-8 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-accent bg-accent-wash px-5 py-4 hover:bg-surface-2"
                 >
                     <div className="min-w-0">

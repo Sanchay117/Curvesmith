@@ -31,7 +31,7 @@ import {
     getPriceFromSqrtPrice,
     PoolConfig,
 } from '@meteora-ag/dynamic-bonding-curve-sdk'
-import { DBC_PROGRAM_ID, MEMO_PROGRAM_ID, Network, QUOTE_ASSETS, REGISTRY_ADDRESS, REGISTRY_MEMO_PREFIX } from './constants'
+import { DBC_PROGRAM_ID, MEMO_PROGRAM_ID, Network, quoteAssetByMint, REGISTRY_ADDRESS, REGISTRY_MEMO_PREFIX } from './constants'
 import { CurveShape, LpVesting, PresetCategory, PresetSpec, PRESET_SCHEMA, TokenAuthority } from './preset'
 import { baseFeeBpsAt } from './sim/scenario'
 import { initialBaseSupply } from './sim/pool'
@@ -276,7 +276,11 @@ export function specFromConfig(
     network: Network,
     intent?: Partial<Pick<ListingMeta, 'n' | 't' | 'd' | 'g' | 'k' | 's'>>
 ): PresetSpec {
-    const quote = config.quoteMint.equals(QUOTE_ASSETS[network].USDC.mint) ? 'USDC' : 'SOL'
+    const asset = quoteAssetByMint(network, config.quoteMint)
+    if (!asset) throw new Error(`Unsupported quote mint ${config.quoteMint.toBase58()}. Use the configuration audit for custom quote assets; they must not be treated as SOL.`)
+    if (config.migrationOption !== 1) throw new Error('The Studio simulation supports DAMM v2 configs. Use the configuration audit for DAMM v1.')
+    if (config.poolFees.baseFee.baseFeeMode > 1) throw new Error('The Studio simulation supports time-based fees. Use the configuration audit for other fee modes.')
+    const quote = asset.symbol as 'SOL' | 'USDC'
     const qDec = quote === 'SOL' ? 9 : 6
     const dec = config.tokenDecimal as 6 | 9
     const supplyRaw = initialBaseSupply(config)
