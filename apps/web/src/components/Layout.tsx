@@ -157,6 +157,7 @@ function useDismiss(open: boolean, close: () => void) {
 export function Layout({ children }: { children: ReactNode }) {
     const [theme, setTheme] = useTheme()
     const { network } = useNetwork()
+    const location = useLocation()
     const [open, setOpen] = useState(false)
     const [menu, setMenu] = useState(false)
     const closeSettings = useCallback(() => setOpen(false), [])
@@ -235,7 +236,10 @@ export function Layout({ children }: { children: ReactNode }) {
                     You are on mainnet. Publishing, launching and trading use real funds.
                 </div>
             )}
-            <main className="mx-auto max-w-[1280px] px-4 py-8 sm:px-6">{children}</main>
+            {/* keyed by route so every page enters with the same short fade-up */}
+            <main key={location.pathname} className="lp-page mx-auto max-w-[1280px] px-4 py-8 sm:px-6">
+                {children}
+            </main>
             <footer className="mx-auto max-w-[1280px] px-4 pb-10 text-xs text-muted sm:px-6">
                 Built on Meteora's Dynamic Bonding Curve and DAMM v2. Simulations use the program's own fixed-point math and are verified against the
                 program binary; they are models of behaviour, not predictions of price.

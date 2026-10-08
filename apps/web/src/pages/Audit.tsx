@@ -7,6 +7,7 @@ import { unpackMint, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from '@solana/spl
 import { auditConfig, AuditReceipt, DBC_PROGRAM_ID, explorerUrl, sha256, toHex } from '@launchproof/core'
 import { useNetwork } from '../lib/network'
 import { Button, Card, Empty, Skeleton } from '../components/ui'
+import { CountUp, Reveal, RingMeter } from '../components/motion'
 import { num } from '../lib/format'
 import { useCensus } from './Report'
 
@@ -51,25 +52,137 @@ export function Audit() {
         const a = document.createElement('a')
         a.href = url; a.download = `launchproof-${address}.json`; a.click(); URL.revokeObjectURL(url)
     }
-    return <div className="mx-auto max-w-4xl"><Link to="/report" className="text-sm text-accent hover:underline">← State of DBC</Link>
-        <div className="mt-5 text-xs font-semibold tracking-widest text-accent uppercase">Configuration review · {network}</div><h1 className="mt-3 text-4xl font-semibold tracking-tight">Know what the config permits.</h1>
-        <a href={explorerUrl(network, 'address', address)} target="_blank" rel="noreferrer" className="mt-4 block break-all font-mono text-sm text-ink-2 hover:text-accent">{address} ↗</a>
-        <div className="mt-5 flex flex-wrap gap-2"><Button onClick={() => live.refetch()} disabled={live.isFetching}>{live.isFetching ? 'Reading finalized account…' : 'Refresh from chain'}</Button><Button disabled={!live.data} onClick={download}>Download audit receipt ↓</Button></div>
-        {live.error && <p role="status" className="mt-4 text-sm text-serious">Live read failed: {(live.error as Error).message}. {cached?.audit ? 'Showing the dated report snapshot below.' : 'Check the address, network, or RPC setting.'}</p>}
-        {!audit && live.isLoading && <Skeleton className="mt-6 h-64" />}
-        {!audit && !live.isLoading && <div className="mt-6"><Empty title="No review available">A decoded DBC PoolConfig is required. Pool and token mint addresses are different from config addresses.</Empty></div>}
-        {audit && <>
-            <p className="mt-5 text-xs text-muted">{live.data ? `Live account · finalized slot ${live.data.slot} · ${live.data.fetchedAt}` : `Snapshot · ${census.data?.observedAt}`} · Policy {audit.policy}</p>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{[
-                ['Configured raise', audit.raise === null ? `${audit.raiseRaw} raw units` : `${num(Number(audit.raise))} ${audit.quoteSymbol ?? 'quote tokens'}`],
-                ['Migration target', audit.migration], ['Initially unlocked LP', `${audit.unlockedLiquidityPct}%`],
-                ['Opening base fee', `${(audit.openingFeeBps / 100).toFixed(2)}%`], ['Residual supply estimate', `${audit.leftoverSupplyPct.toFixed(2)}%`],
-                ['Price range', `${num(audit.priceMultiple)}×`],
-            ].map(([label, value]) => <Card key={label}><div className="text-xs text-muted">{label}</div><div className="mt-2 text-xl font-semibold">{value}</div></Card>)}</div>
-            <Card className="mt-4"><div className="text-xs font-medium text-muted">QUOTE MINT · {audit.quoteDecimals === null ? 'precision unresolved' : `${audit.quoteDecimals} decimals`}</div><a href={explorerUrl(network, 'address', audit.quoteMint)} target="_blank" rel="noreferrer" className="mt-2 block break-all font-mono text-sm text-accent hover:underline">{audit.quoteMint} ↗</a>{!audit.quoteSymbol && <p className="mt-2 text-sm text-ink-2">Custom quote asset. These amounts are not labeled SOL or USD. No monetary value is inferred.</p>}</Card>
-            <h2 className="mt-8 text-2xl font-semibold">Terms to review</h2><div className="mt-4 space-y-3">{audit.findings.map((f) => <Card key={f.id}><div className="flex items-center gap-3"><span className={f.severity === 'critical' ? 'text-critical' : f.severity === 'warning' ? 'text-serious' : 'text-muted'}>●</span><h3 className="font-semibold">{f.title}</h3><span className="ml-auto text-xs text-muted">{f.severity}</span></div><p className="mt-2 text-sm leading-relaxed text-ink-2">{f.detail}</p></Card>)}{!audit.findings.length && <Card>No terms were flagged by these checks. That is not a safety certification.</Card>}</div>
-            <Card className="mt-8"><h2 className="font-semibold">Evidence and scope</h2><p className="mt-2 text-sm leading-relaxed text-ink-2">The receipt records the decoded config, its account-byte hash, observation slot, and deterministic review policy. It is an RPC observation, not a cryptographic proof of chain inclusion or an endorsement. It does not inspect issuer identity, backing, holder concentration, trading history, or future behavior.</p><div className="mt-4 break-all font-mono text-xs text-muted">SHA-256 {live.data?.configHash ?? cached?.configHash}</div><pre className="mt-4 overflow-x-auto text-xs">pnpm cli verify-receipt launchproof-{address}.json</pre></Card>
-            <div className="mt-6 flex flex-wrap gap-3"><Link to="/studio"><Button variant="primary">Design your own config</Button></Link><Link to="/market"><Button>Explore templates</Button></Link></div>
-        </>}
-    </div>
+    const flagged = audit?.findings.filter((f) => f.severity === 'critical' || f.severity === 'warning') ?? []
+    const worst = flagged.some((f) => f.severity === 'critical') ? 'var(--critical)' : flagged.length ? 'var(--serious)' : 'var(--good)'
+    return (
+        <div className="mx-auto max-w-4xl">
+            <Link to="/" className="text-sm text-muted transition-colors hover:text-accent">
+                ← State of DBC
+            </Link>
+            <div className="mt-6 flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0">
+                    <div className="text-xs font-semibold tracking-widest text-accent uppercase">Config audit · {network === 'devnet' ? 'devnet' : 'mainnet'}</div>
+                    <a href={explorerUrl(network, 'address', address)} target="_blank" rel="noreferrer" className="mt-2 block font-mono text-2xl font-semibold break-all hover:text-accent sm:text-3xl">
+                        {address.slice(0, 6)}...{address.slice(-6)} <span className="text-base text-muted">↗</span>
+                    </a>
+                </div>
+                <div className="flex gap-2">
+                    <Button size="sm" onClick={() => live.refetch()} disabled={live.isFetching}>
+                        {live.isFetching ? 'Reading...' : 'Refresh'}
+                    </Button>
+                    <Button size="sm" disabled={!live.data} onClick={download}>
+                        Receipt ↓
+                    </Button>
+                </div>
+            </div>
+            {live.error && (
+                <p role="status" className="mt-4 text-sm text-serious">
+                    Live read failed. {cached?.audit ? 'Showing the census snapshot instead.' : 'Check the address and network.'}
+                </p>
+            )}
+            {!audit && live.isLoading && <Skeleton className="mt-6 h-64" />}
+            {!audit && !live.isLoading && (
+                <div className="mt-6">
+                    <Empty title="No DBC config here">Paste a config address, not a pool or token mint.</Empty>
+                </div>
+            )}
+            {audit && (
+                <>
+                    {/* verdict */}
+                    <div className="lp-pop mt-6 flex items-center gap-4 rounded-2xl border p-5" style={{ borderColor: `color-mix(in srgb, ${worst} 45%, transparent)`, background: `color-mix(in srgb, ${worst} 8%, transparent)` }}>
+                        <div className="grid size-12 shrink-0 place-items-center rounded-xl text-xl font-bold text-white" style={{ background: worst }}>
+                            {flagged.length || '✓'}
+                        </div>
+                        <div>
+                            <div className="text-lg font-semibold">{flagged.length ? `${flagged.length} ${flagged.length === 1 ? 'term' : 'terms'} to read before you buy` : 'No flagged terms'}</div>
+                            <div className="text-sm text-ink-2">{flagged.length ? flagged.map((f) => f.title).join(' · ') : 'Nothing in this config tripped our checks. That is not a safety certificate.'}</div>
+                        </div>
+                    </div>
+
+                    {/* the two numbers that matter most, then the rest */}
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                        {[
+                            { label: 'of graduated liquidity can be pulled on day one', value: audit.unlockedLiquidityPct / 100, warn: audit.unlockedLiquidityPct > 50 },
+                            { label: 'of supply left to one wallet after graduation', value: audit.leftoverSupplyPct / 100, warn: audit.leftoverSupplyPct > 5 },
+                        ].map((m, n) => (
+                            <Reveal key={m.label} delay={n * 120}>
+                                <Card className="flex items-center gap-5">
+                                    <RingMeter value={m.value} color={m.warn ? (m.value > 0.5 ? 'var(--critical)' : 'var(--serious)') : 'var(--good)'} size={96}>
+                                        <CountUp value={m.value * 100} format={(v) => `${v.toFixed(0)}%`} className="text-lg font-semibold" />
+                                    </RingMeter>
+                                    <div className="text-[15px] leading-snug font-medium">{m.label}</div>
+                                </Card>
+                            </Reveal>
+                        ))}
+                    </div>
+                    <Reveal>
+                        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                            {[
+                                ['Raise', audit.raise === null ? 'raw units' : `${num(Number(audit.raise))} ${audit.quoteSymbol ?? ''}`],
+                                ['Graduates to', audit.migration],
+                                ['Opening fee', `${(audit.openingFeeBps / 100).toFixed(2)}%`],
+                                ['Price range', `${num(audit.priceMultiple)}x`],
+                            ].map(([label, value]) => (
+                                <div key={label} className="rounded-xl border border-line bg-surface px-4 py-3">
+                                    <div className="text-xs text-muted">{label}</div>
+                                    <div className="mt-1 font-semibold">{value}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </Reveal>
+                    {!audit.quoteSymbol && (
+                        <p className="mt-3 text-xs text-muted">
+                            Custom quote mint{' '}
+                            <a href={explorerUrl(network, 'address', audit.quoteMint)} target="_blank" rel="noreferrer" className="font-mono text-accent hover:underline">
+                                {audit.quoteMint.slice(0, 6)}...{audit.quoteMint.slice(-4)}
+                            </a>
+                            : amounts are in its own units, not SOL or USD.
+                        </p>
+                    )}
+
+                    {/* findings */}
+                    <h2 className="mt-10 text-xl font-semibold">What the config allows</h2>
+                    <div className="mt-4 space-y-3">
+                        {audit.findings.map((f, n) => {
+                            const color = f.severity === 'critical' ? 'var(--critical)' : f.severity === 'warning' ? 'var(--serious)' : 'var(--s1)'
+                            return (
+                                <Reveal key={f.id} delay={n * 90}>
+                                    <div className="rounded-2xl border border-line border-l-4 bg-surface p-4" style={{ borderLeftColor: color }}>
+                                        <div className="flex items-center gap-3">
+                                            <h3 className="font-semibold">{f.title}</h3>
+                                            <span className="ml-auto rounded-full px-2 py-0.5 text-[11px] font-medium" style={{ color, background: `color-mix(in srgb, ${color} 14%, transparent)` }}>
+                                                {f.severity}
+                                            </span>
+                                        </div>
+                                        <p className="mt-1.5 text-sm leading-relaxed text-ink-2">{f.detail}</p>
+                                    </div>
+                                </Reveal>
+                            )
+                        })}
+                    </div>
+
+                    <details className="group mt-8 rounded-2xl border border-line bg-surface p-4 [&_summary::-webkit-details-marker]:hidden">
+                        <summary className="flex cursor-pointer list-none items-center justify-between text-sm">
+                            <span className="font-medium">Evidence and receipt</span>
+                            <span className="text-muted transition-transform group-open:rotate-180">⌄</span>
+                        </summary>
+                        <div className="mt-3 space-y-2 border-t border-line pt-3 text-xs leading-relaxed text-ink-2">
+                            <p>{live.data ? `Read live at finalized slot ${live.data.slot}.` : `From the census snapshot of ${census.data?.observedAt ?? 'mainnet'}.`} Policy {audit.policy}. The receipt holds the raw config bytes and their hash, so anyone can re-run this review offline. It is an RPC observation, not an endorsement.</p>
+                            <div className="font-mono break-all text-muted">SHA-256 {live.data?.configHash ?? cached?.configHash}</div>
+                            <pre className="overflow-x-auto rounded-lg bg-surface-2 p-3">pnpm cli verify-receipt launchproof-{address}.json</pre>
+                        </div>
+                    </details>
+
+                    <div className="mt-8 flex flex-wrap gap-3">
+                        <Link to="/studio">
+                            <Button variant="primary">Design a better config</Button>
+                        </Link>
+                        <Link to="/market">
+                            <Button>Browse presets</Button>
+                        </Link>
+                    </div>
+                </>
+            )}
+        </div>
+    )
 }

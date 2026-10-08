@@ -127,6 +127,157 @@ body {
     font-variant-numeric: tabular-nums;
 }
 
+/* ---------------------------------------------------------------- motion (see components/motion.tsx) */
+@keyframes lp-fade-up {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+@keyframes lp-sweep {
+    from {
+        transform: scaleX(0);
+    }
+    to {
+        transform: scaleX(1);
+    }
+}
+@keyframes lp-draw {
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+@keyframes lp-pop {
+    0% {
+        opacity: 0;
+        transform: translateY(6px) scale(0.92);
+    }
+    70% {
+        opacity: 1;
+        transform: scale(1.03);
+    }
+    100% {
+        opacity: 1;
+        transform: none;
+    }
+}
+@keyframes lp-scan {
+    0% {
+        transform: translateX(-10%);
+        opacity: 0;
+    }
+    10%,
+    80% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateX(1000%);
+        opacity: 0;
+    }
+}
+@keyframes lp-shimmer {
+    to {
+        transform: translateX(100%);
+    }
+}
+@keyframes lp-breathe {
+    50% {
+        opacity: 0.35;
+    }
+}
+
+.lp-page {
+    animation: lp-fade-up 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.lp-reveal {
+    opacity: 0;
+    transform: translateY(16px);
+    transition:
+        opacity 0.7s cubic-bezier(0.2, 0.7, 0.2, 1),
+        transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.lp-reveal.is-in {
+    opacity: 1;
+    transform: none;
+}
+.lp-lift {
+    transition:
+        transform 0.25s cubic-bezier(0.2, 0.7, 0.2, 1),
+        border-color 0.25s,
+        box-shadow 0.25s;
+}
+.lp-lift:hover {
+    transform: translateY(-3px);
+    border-color: var(--border-strong);
+    box-shadow: 0 16px 36px -18px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.lp-sweep {
+    transform-box: fill-box;
+    transform-origin: left center;
+    animation: lp-sweep 1.2s cubic-bezier(0.3, 0.7, 0.2, 1) both;
+}
+.lp-draw {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: lp-draw 1.6s cubic-bezier(0.45, 0.1, 0.2, 1) forwards;
+}
+.lp-pop {
+    opacity: 0;
+    animation: lp-pop 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+}
+.lp-scan {
+    animation: lp-scan 2.6s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+.lp-breathe {
+    animation: lp-breathe 1.6s ease-in-out infinite;
+}
+.lp-shimmer {
+    position: relative;
+    overflow: hidden;
+}
+.lp-shimmer::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--ink) 6%, transparent), transparent);
+    animation: lp-shimmer 1.4s infinite;
+}
+/* closest-side keeps both glows inside the box, so no hard edge shows where the section ends */
+.lp-glow {
+    background:
+        radial-gradient(closest-side at 76% 42%, color-mix(in srgb, var(--accent) 17%, transparent), transparent),
+        radial-gradient(closest-side at 14% 18%, color-mix(in srgb, var(--s1) 9%, transparent), transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lp-page,
+    .lp-sweep,
+    .lp-draw,
+    .lp-pop,
+    .lp-scan,
+    .lp-breathe,
+    .lp-shimmer::after {
+        animation: none !important;
+    }
+    .lp-reveal,
+    .lp-pop {
+        opacity: 1 !important;
+        transform: none !important;
+        transition: none !important;
+    }
+    .lp-draw {
+        stroke-dashoffset: 0;
+    }
+    .lp-lift:hover {
+        transform: none;
+    }
+}
+
 /* range inputs styled to the theme */
 input[type='range'] {
     accent-color: var(--accent);

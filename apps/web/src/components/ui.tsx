@@ -372,7 +372,7 @@ export function Empty({ title, children }: { title: string; children?: ReactNode
 }
 
 export function Skeleton({ className }: { className?: string }) {
-    return <div className={cx('animate-pulse rounded-lg bg-surface-2', className)} />
+    return <div className={cx('lp-shimmer rounded-lg bg-surface-2', className)} />
 }
 
 export function InfoTip({ children }: { children: ReactNode }) {

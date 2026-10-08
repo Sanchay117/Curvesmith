@@ -34,7 +34,7 @@ export function PresetCard({
     return (
         <Link
             to={href}
-            className="group flex flex-col rounded-2xl border border-line bg-surface p-4 transition-colors hover:border-line-strong"
+            className="lp-lift group flex flex-col rounded-2xl border border-line bg-surface p-4"
         >
             <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -50,6 +50,7 @@ export function PresetCard({
             <div className="mt-3">
                 {ev ? (
                     <Sparkline
+                        color="var(--accent)"
                         points={ev.analyzed.curve.map((c) => ({ x: c.sold, y: c.price }))}
                         log={ev.analyzed.analysis.maxMultiple > 30}
                     />

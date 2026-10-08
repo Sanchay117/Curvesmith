@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useMemo, useRef, useState } from 'react'
+import { ReactNode, useEffect, useId, useMemo, useRef, useState } from 'react'
 
 export interface Series {
     id: string
@@ -310,6 +310,7 @@ export function LineChart({ series, height = 260, xFormat, yFormat, xTooltip, xL
 
 /** Tiny inline curve for cards; no axes, no hover. */
 export function Sparkline({ points, color = 'var(--s1)', height = 44, log }: { points: Array<{ x: number; y: number }>; color?: string; height?: number; log?: boolean }) {
+    const clip = `spark-${useId().replace(/:/g, '')}`
     if (points.length < 2) return <div style={{ height }} />
     const xs = points.map((p) => p.x)
     const ys = points.map((p) => (log ? Math.log10(p.y) : p.y))
@@ -327,10 +328,18 @@ export function Sparkline({ points, color = 'var(--s1)', height = 44, log }: { p
             return `${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`
         })
         .join('')
+    // the clip sweeps left to right on mount, so the curve "draws" in
     return (
         <svg viewBox={`0 0 ${W} ${height}`} preserveAspectRatio="none" className="w-full" style={{ height }} aria-hidden>
-            <path d={`${d}L${W},${height}L0,${height}Z`} fill={color} opacity="0.1" />
-            <path d={d} fill="none" stroke={color} strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+            <defs>
+                <clipPath id={clip}>
+                    <rect className="lp-sweep" width={W} height={height} />
+                </clipPath>
+            </defs>
+            <g clipPath={`url(#${clip})`}>
+                <path d={`${d}L${W},${height}L0,${height}Z`} fill={color} opacity="0.12" />
+                <path d={d} fill="none" stroke={color} strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+            </g>
         </svg>
     )
 }

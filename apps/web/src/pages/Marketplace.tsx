@@ -5,7 +5,8 @@ import { useConnection } from '@solana/wallet-adapter-react'
 import { PublicKey } from '@solana/web3.js'
 import { LIBRARY, LIBRARY_IDS, Listing, PresetCategory } from '@launchproof/core'
 import { PresetCard, CATEGORY_LABEL } from '../components/PresetCard'
-import { Button, cx, Empty, Skeleton, TextInput } from '../components/ui'
+import { Button, cx, Empty, Segmented, Skeleton, TextInput } from '../components/ui'
+import { CountUp, Reveal } from '../components/motion'
 import { statsQuery, useListings, usePresetStats, useSnapshot } from '../lib/queries'
 import { useNetwork } from '../lib/network'
 import { listingEvaluation, templateEvaluation, useDeferredEvaluation } from '../lib/evaluations'
@@ -75,8 +76,9 @@ export function Marketplace() {
     const listings = useListings()
     const [cat, setCat] = useState<PresetCategory | 'all'>('all')
     const [q, setQ] = useState('')
+    const [tab, setTab] = useState<'live' | 'templates'>('live')
 
-    const match = (name: string, tagline: string, category: PresetCategory, tags: string[]) =>
+    const match =(name: string, tagline: string, category: PresetCategory, tags: string[]) =>
         (cat === 'all' || category === cat) &&
         (!q || `${name} ${tagline} ${tags.join(' ')}`.toLowerCase().includes(q.toLowerCase()))
 
@@ -108,19 +110,11 @@ export function Marketplace() {
         <div>
             <section className="mb-10 grid grid-cols-1 gap-8 lg:grid-cols-[1.25fr_1fr] lg:items-end">
                 <div>
-                    <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-xs text-ink-2">
-                        <span className="size-1.5 rounded-full bg-accent" /> Built on Meteora Dynamic Bonding Curve
-                    </div>
-                    <h1 className="text-4xl leading-[1.08] font-semibold tracking-tight sm:text-5xl">
-                        Launch economics,
-                        <br />
-                        designed and proven.
-                    </h1>
-                    <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-ink-2">
-                        Launchproof turns DBC configs into products. Design a curve, simulate it against bots and crowds with the program's exact
-                        math, publish it on-chain, and earn the partner fees of every token that launches from it.
+                    <h1 className="lp-pop text-4xl leading-[1.08] font-semibold tracking-tight sm:text-5xl">Presets that pay their authors.</h1>
+                    <p className="lp-pop mt-4 max-w-lg text-[16px] leading-relaxed text-ink-2" style={{ animationDelay: '80ms' }}>
+                        Every preset is a real DBC config. Launch a token from one, or publish your own and earn on every launch.
                     </p>
-                    <div className="mt-6 flex flex-wrap gap-2">
+                    <div className="lp-pop mt-6 flex flex-wrap gap-2" style={{ animationDelay: '160ms' }}>
                         <Link to="/studio">
                             <Button variant="primary" size="lg">
                                 Design a preset
@@ -133,12 +127,12 @@ export function Marketplace() {
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                     {[
-                        { label: 'Presets on-chain', value: listings.data ? num(listings.data.length) : null },
-                        { label: 'Tokens launched', value: listings.data ? num(totals.launches) : null },
-                        { label: 'Graduated to DAMM v2', value: listings.data ? num(totals.graduated) : null },
-                    ].map((s) => (
-                        <div key={s.label} className="rounded-2xl border border-line bg-surface p-4">
-                            <div className="text-2xl font-semibold">{s.value ?? <Skeleton className="h-8 w-12" />}</div>
+                        { label: 'presets on-chain', value: listings.data ? listings.data.length : null },
+                        { label: 'tokens launched', value: listings.data ? totals.launches : null },
+                        { label: 'graduated to DAMM v2', value: listings.data ? totals.graduated : null },
+                    ].map((s, n) => (
+                        <div key={s.label} className="lp-pop rounded-2xl border border-line bg-surface p-4" style={{ animationDelay: `${120 + n * 80}ms` }}>
+                            <div className="text-3xl font-semibold tracking-tight">{s.value !== null ? <CountUp value={s.value} duration={900} /> : <Skeleton className="h-8 w-12" />}</div>
                             <div className="mt-1 text-xs text-muted">{s.label}</div>
                         </div>
                     ))}
@@ -181,15 +175,25 @@ export function Marketplace() {
 
             {!address && (
                 <>
-                    <section className="mb-12">
-                        <div className="mb-4 flex items-baseline justify-between">
-                            <h2 className="text-xl font-semibold">Live on {network === 'devnet' ? 'devnet' : 'mainnet'}</h2>
-                            <span className="text-xs text-muted">
-                                {listings.isPlaceholderData && snapshot
-                                    ? `Showing a registry snapshot from ${ago(snapshot.generatedAt)} while live chain data loads.`
-                                    : "Read from the CSR-1 on-chain registry. Only a config's fee claimer can list it."}
-                            </span>
-                        </div>
+                    <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                        <Segmented
+                            value={tab}
+                            onChange={setTab}
+                            options={[
+                                { value: 'live', label: `Live on ${network === 'devnet' ? 'devnet' : 'mainnet'}${listings.data ? ` (${live.length})` : ''}` },
+                                { value: 'templates', label: `Templates (${templates.length})` },
+                            ]}
+                        />
+                        <span className="text-xs text-muted">
+                            {tab === 'templates'
+                                ? 'Fork one, tune it, publish it as your own.'
+                                : listings.isPlaceholderData && snapshot
+                                  ? `Snapshot from ${ago(snapshot.generatedAt)}, refreshing from chain`
+                                  : 'Read live from the on-chain registry'}
+                        </span>
+                    </div>
+                    {tab === 'live' && (
+                    <section key="live">
                         {listings.isLoading ? (
                             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                                 {[0, 1, 2].map((i) => (
@@ -204,24 +208,27 @@ export function Marketplace() {
                             <Empty title="No live presets match">Publish one from the Studio, or start from a template below.</Empty>
                         ) : (
                             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                {live.map((l) => (
-                                    <ListingCard key={`${l.config.toBase58()}:${l.author.toBase58()}`} l={l} />
+                                {live.map((l, n) => (
+                                    <Reveal key={`${l.config.toBase58()}:${l.author.toBase58()}`} delay={(n % 3) * 80}>
+                                        <ListingCard l={l} />
+                                    </Reveal>
                                 ))}
                             </div>
                         )}
                     </section>
+                    )}
 
-                    <section>
-                        <div className="mb-4 flex items-baseline justify-between">
-                            <h2 className="text-xl font-semibold">Template library</h2>
-                            <span className="text-xs text-muted">Each one shows off a different DBC capability. Fork, tune, publish.</span>
-                        </div>
+                    {tab === 'templates' && (
+                    <section key="templates">
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            {templates.map((id) => (
-                                <TemplateCard key={id} id={id} />
+                            {templates.map((id, n) => (
+                                <Reveal key={id} delay={(n % 3) * 80}>
+                                    <TemplateCard id={id} />
+                                </Reveal>
                             ))}
                         </div>
                     </section>
+                    )}
                 </>
             )}
         </div>

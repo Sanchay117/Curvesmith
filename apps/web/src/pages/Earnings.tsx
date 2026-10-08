@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { ReactNode, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { useWalletModal } from '@solana/wallet-adapter-react-ui'
@@ -6,6 +6,7 @@ import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { buildClaimTransaction, explorerUrl, Listing, PoolSnapshot, poolsByCreator, quoteAssetByMint, summarizePool } from '@launchproof/core'
 import Decimal from 'decimal.js'
 import { Button, Card, Empty, Skeleton } from '../components/ui'
+import { CountUp, Reveal } from '../components/motion'
 import { statsQuery, useListings } from '../lib/queries'
 import { useNetwork } from '../lib/network'
 import { listingSpec } from '../lib/evaluations'
@@ -22,7 +23,7 @@ interface Row {
     quoteSymbol: string
 }
 
-function ClaimTable({ rows, title, empty }: { rows: Row[]; title: string; empty: string }) {
+function ClaimTable({ rows, title, empty, hint }: { rows: Row[]; title: string; empty: string; hint: ReactNode }) {
     const { connection } = useConnection()
     const wallet = useWallet()
     const { network } = useNetwork()
@@ -54,9 +55,16 @@ function ClaimTable({ rows, title, empty }: { rows: Row[]; title: string; empty:
             <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
                 <div>
                     <h2 className="text-xl font-semibold">{title}</h2>
-                    <div className="text-[13px] text-muted">
+                    <div className="mt-0.5 text-[13px] text-muted">
                         Claimable now:{' '}
-                        {Object.keys(totals).length ? Object.entries(totals).map(([k, v]) => `${num(v)} ${k}`).join(' + ') : 'nothing yet'}
+                        {Object.keys(totals).length
+                            ? Object.entries(totals).map(([k, v], i) => (
+                                  <span key={k}>
+                                      {i > 0 && ' + '}
+                                      <CountUp value={v} format={(n) => `${num(n)} ${k}`} />
+                                  </span>
+                              ))
+                            : 'nothing yet'}
                     </div>
                 </div>
                 {claimable.length > 1 && (
@@ -66,41 +74,36 @@ function ClaimTable({ rows, title, empty }: { rows: Row[]; title: string; empty:
                 )}
             </div>
             {rows.length === 0 ? (
-                <Empty title={empty} />
+                <Empty title={empty}>{hint}</Empty>
             ) : (
-                <Card pad={false} className="overflow-x-auto">
-                    <table className="w-full text-[13px]">
-                        <thead>
-                            <tr className="border-b border-line text-left text-xs text-muted">
-                                <th className="px-4 py-3 font-medium">Pool</th>
-                                <th className="px-4 py-3 font-medium">Preset</th>
-                                <th className="px-4 py-3 text-right font-medium">Claimable</th>
-                                <th className="px-4 py-3" />
-                            </tr>
-                        </thead>
-                        <tbody className="tnum">
-                            {rows.map((r) => (
-                                <tr key={r.snap.address.toBase58() + r.who} className="border-b border-line last:border-0">
-                                    <td className="px-4 py-3">
-                                        <Link className="font-mono hover:text-accent" to={`/token/${r.snap.address.toBase58()}`}>
-                                            {r.snap.address.toBase58().slice(0, 8)}...
-                                        </Link>
-                                    </td>
-                                    <td className="px-4 py-3">{r.preset}</td>
-                                    <td className="px-4 py-3 text-right">
+                <ul className="space-y-2">
+                    {rows.map((r, i) => (
+                        <Reveal key={r.snap.address.toBase58() + r.who} as="li" delay={Math.min(i, 6) * 60}>
+                            <Card pad={false} className="lp-lift flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                                <div className="min-w-0">
+                                    <Link className="font-mono text-[13px] hover:text-accent" to={`/token/${r.snap.address.toBase58()}`}>
+                                        {r.snap.address.toBase58().slice(0, 8)}...
+                                    </Link>
+                                    <div className="text-[13px] text-muted">{r.preset}</div>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <div className="tnum text-right text-[14px] font-semibold">
                                         {num(r.quote)} {r.quoteSymbol}
-                                        {r.base > 0 && <span className="text-ink-2"> + {num(r.base)} tokens</span>}
-                                    </td>
-                                    <td className="px-4 py-3 text-right">
-                                        <Button size="sm" disabled={r.quote === 0 && r.base === 0} loading={busy === r.snap.address.toBase58()} onClick={() => claim([r])}>
-                                            Claim
-                                        </Button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </Card>
+                                        {r.base > 0 && <div className="text-[12px] font-normal text-ink-2">+ {num(r.base)} tokens</div>}
+                                    </div>
+                                    <Button
+                                        size="sm"
+                                        disabled={r.quote === 0 && r.base === 0}
+                                        loading={busy === r.snap.address.toBase58()}
+                                        onClick={() => claim([r])}
+                                    >
+                                        Claim
+                                    </Button>
+                                </div>
+                            </Card>
+                        </Reveal>
+                    ))}
+                </ul>
             )}
         </section>
     )
@@ -124,13 +127,13 @@ export function Earnings() {
 
     if (!me) {
         return (
-            <div className="mx-auto max-w-xl py-16 text-center">
+            <Reveal className="mx-auto max-w-xl py-16 text-center">
                 <h1 className="text-3xl font-semibold tracking-tight">Earnings</h1>
-                <p className="mt-2 text-ink-2">Connect a wallet to see fees you can claim as a preset author or a token creator.</p>
+                <p className="mt-2 text-ink-2">Connect a wallet to see the fees you can claim.</p>
                 <Button className="mt-6" variant="primary" size="lg" onClick={() => setVisible(true)}>
                     Connect wallet
                 </Button>
-            </div>
+            </Reveal>
         )
     }
 
@@ -157,17 +160,38 @@ export function Earnings() {
 
     return (
         <div>
-            <h1 className="text-3xl font-semibold tracking-tight">Earnings</h1>
-            <p className="mt-1 mb-8 text-[14px] text-ink-2">
-                Preset authors earn the partner share of every curve trade on tokens launched from their configs. Creators earn their configured share
-                of their own token's fees.
-            </p>
+            <Reveal>
+                <h1 className="text-3xl font-semibold tracking-tight">Earnings</h1>
+                <p className="mt-1 mb-8 text-[14px] text-ink-2">Authors earn the partner share of every trade on their launches. Creators earn their share of their own token's fees.</p>
+            </Reveal>
             {loading ? (
                 <Skeleton className="h-64" />
             ) : (
                 <>
-                    <ClaimTable rows={authorRows} title={`As preset author (${mine.length} preset${mine.length === 1 ? '' : 's'})`} empty="No launches on your presets yet" />
-                    <ClaimTable rows={creatorRows} title="As token creator" empty="You have not launched a token yet" />
+                    <Reveal delay={80}>
+                        <ClaimTable
+                            rows={authorRows}
+                            title={`As preset author (${mine.length} preset${mine.length === 1 ? '' : 's'})`}
+                            empty="No launches on your presets yet"
+                            hint={
+                                <>
+                                    Publish a preset and each launch on it pays you here. <Link to="/studio" className="font-semibold text-accent hover:underline">Open the Studio</Link>
+                                </>
+                            }
+                        />
+                    </Reveal>
+                    <Reveal delay={160}>
+                        <ClaimTable
+                            rows={creatorRows}
+                            title="As token creator"
+                            empty="You have not launched a token yet"
+                            hint={
+                                <>
+                                    Launch from any preset and your creator share shows up here. <Link to="/market" className="font-semibold text-accent hover:underline">Browse presets</Link>
+                                </>
+                            }
+                        />
+                    </Reveal>
                 </>
             )}
         </div>
