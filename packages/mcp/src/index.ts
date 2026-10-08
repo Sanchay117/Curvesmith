@@ -80,7 +80,7 @@ function summarizeEvaluation(ev: Evaluation) {
     return {
         name: ev.analyzed.spec.name,
         quote: ev.analyzed.spec.quote,
-        health: { grade: ev.lint.grade, score: ev.lint.score },
+        designHeuristic: { grade: ev.lint.grade, score: ev.lint.score, safetyCertificate: false },
         analysis: ev.analyzed.analysis,
         findings: ev.lint.findings,
         simulations: Object.values(ev.runs).map(summarizeRun),
@@ -100,7 +100,7 @@ const tool = (name: string, description: string, inputSchema: z.ZodRawShape, han
 
 // ---- design & analysis (pure, no network) ---------------------------------------------------
 
-tool('list_templates', 'List the curated DBC preset templates with their raise, curve shape and launch-health grade.', {}, () =>
+tool('list_templates', 'List curated DBC preset templates with their raise, curve shape, and design-heuristic grade. The grade is not a safety certificate.', {}, () =>
     LIBRARY_IDS.map((id) => {
         const ev = evaluatePreset(LIBRARY[id])
         return {
@@ -111,6 +111,7 @@ tool('list_templates', 'List the curated DBC preset templates with their raise, 
             shape: LIBRARY[id].pricing.shape.kind,
             raise: `${ev.analyzed.analysis.raise.toFixed(2)} ${LIBRARY[id].quote}`,
             grade: ev.lint.grade,
+            gradeType: 'design heuristic',
         }
     })
 )
@@ -127,7 +128,7 @@ tool(
 
 tool(
     'evaluate_preset',
-    'Compile a preset to an exact DBC config, simulate it against an organic crowd and a sniper rush, and lint it. Returns headline economics (raise, market caps, supply split, fees, price impact), findings with severities, and a 0-100 launch health score.',
+    'Compile a preset to a DBC config, simulate organic and sniper-rush scenarios, and lint it. Returns headline economics, findings with severities, and a 0-100 design heuristic, not a safety score.',
     { preset: presetArg },
     ({ preset }) => summarizeEvaluation(evaluatePreset(toSpec(preset)))
 )

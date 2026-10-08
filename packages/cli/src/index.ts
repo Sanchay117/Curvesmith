@@ -162,7 +162,7 @@ function quoteDecimalsOf(c: Ctx, mint: PublicKey) {
 function printEvaluation(ev: Evaluation, scenarioId?: string) {
     const a = ev.analyzed.analysis
     const q = a.quoteSymbol
-    console.log(`\n${ev.analyzed.spec.name}  [${ev.lint.grade} ${ev.lint.score}/100]`)
+    console.log(`\n${ev.analyzed.spec.name}  [${ev.lint.grade} ${ev.lint.score}/100 design heuristic]`)
     console.log(`  raise             ${fmt(a.raise)} ${q} (${fmt(a.graduationQuote)} ${q} seeds DAMM v2)`)
     console.log(`  market cap        ${fmt(a.startMcap)} -> ${fmt(a.endMcap)} ${q} (${fmt(a.maxMultiple, 1)}x)`)
     console.log(`  supply            ${fmt(a.soldPct, 1)}% sold on curve, ${fmt(a.liquidityPct, 1)}% to LP, ${fmt(a.creatorAllocationPct, 1)}% creator`)
@@ -233,6 +233,7 @@ program
     .description('list the library templates')
     .action(
         run(async () => {
+            console.log('Grades are design heuristics, not safety certificates.')
             for (const id of LIBRARY_IDS) {
                 const ev = evaluatePreset(LIBRARY[id])
                 const a = ev.analyzed.analysis
@@ -286,7 +287,7 @@ program
             const ev = evaluatePreset(spec)
             if (ev.lint.findings.some((f) => f.severity === 'critical')) throw new Error('preset has critical findings; run inspect')
             console.log(
-                `publishing "${spec.name}" (raise ${fmt(ev.analyzed.analysis.raise, 4)} ${spec.quote}, grade ${ev.lint.grade} ${ev.lint.score}/100) to ${c.network} as ${me.publicKey.toBase58()}`
+                `publishing "${spec.name}" (raise ${fmt(ev.analyzed.analysis.raise, 4)} ${spec.quote}, design heuristic ${ev.lint.grade} ${ev.lint.score}/100) to ${c.network} as ${me.publicKey.toBase58()}`
             )
             const plan = await buildPublishTransactions(c.connection, c.network, me.publicKey, spec)
             await send(c, plan.createConfigTx, [me, plan.config], 'create config')

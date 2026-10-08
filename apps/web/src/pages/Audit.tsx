@@ -220,7 +220,7 @@ export function Audit() {
                             <Button variant="primary">Design a better config</Button>
                         </Link>
                         <Link to="/market">
-                            <Button>Browse presets</Button>
+                            <Button>Browse reference configs</Button>
                         </Link>
                     </div>
                 </>

@@ -298,17 +298,18 @@ export function GradeBadge({ grade, score, size = 'md' }: { grade: string; score
         grade === 'A' ? 'var(--good)' : grade === 'B' ? 'var(--s3)' : grade === 'C' ? 'var(--warning)' : grade === 'D' ? 'var(--serious)' : 'var(--critical)'
     const dim = size === 'lg' ? 'size-14 text-2xl' : size === 'md' ? 'size-10 text-lg' : 'size-7 text-sm'
     return (
-        <div className="flex items-center gap-2" title={`Launch health ${score}/100`}>
+        <div className="flex items-center gap-2" title={`Design heuristic ${score}/100. Not a safety grade.`}>
             <div
                 className={cx('grid place-items-center rounded-xl border-2 font-bold', dim)}
                 style={{ borderColor: color, color: 'var(--ink)' }}
             >
                 {grade}
             </div>
+            {size === 'sm' && <span className="text-[10px] text-muted">design</span>}
             {size !== 'sm' && (
                 <div className="leading-tight">
                     <div className="tnum text-sm font-semibold">{score}/100</div>
-                    <div className="text-xs text-muted">launch health</div>
+                    <div className="text-xs text-muted">design heuristic</div>
                 </div>
             )}
         </div>

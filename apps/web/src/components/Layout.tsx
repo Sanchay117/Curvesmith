@@ -165,7 +165,7 @@ export function Layout({ children }: { children: ReactNode }) {
     const settingsRef = useDismiss(open, closeSettings)
     const nav = [
         { to: '/', label: 'State of DBC' },
-        { to: '/market', label: 'Presets' },
+        { to: '/market', label: 'Reference configs' },
         { to: '/studio', label: 'Studio' },
         { to: '/earnings', label: 'Earnings' },
         { to: '/about', label: 'How it works' },

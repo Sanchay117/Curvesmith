@@ -2,6 +2,7 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } f
 import { useSearchParams } from 'react-router-dom'
 import BN from 'bn.js'
 import {
+    auditConfig,
     clonePreset,
     defaultPreset,
     Evaluation,
@@ -10,12 +11,13 @@ import {
     LIBRARY_IDS,
     PRESET_SCHEMA,
     PresetSpec,
+    QUOTE_ASSETS,
     resolveEndMcap,
 } from '@launchproof/core'
 import { Controls } from '../components/studio/Controls'
 import { PublishPanel } from '../components/studio/PublishPanel'
 import { CurveChart, EconomicsGrid, FeeChart, LintPanel, LiquidityBar, Panel, SimulationPanel, SupplyBar } from '../components/PresetViews'
-import { Button, Card, cx, GradeBadge, Segmented, Select } from '../components/ui'
+import { Button, Card, cx, GradeBadge, Segmented, Select, SeverityIcon } from '../components/ui'
 import { templateEvaluation } from '../lib/evaluations'
 import { useListings } from '../lib/queries'
 import { useNetwork } from '../lib/network'
@@ -182,6 +184,11 @@ export function Studio() {
     }
 
     const a = evaluation?.analyzed
+    const draftAudit = useMemo(() => {
+        if (!a) return null
+        const quote = QUOTE_ASSETS[network][a.spec.quote]
+        return auditConfig({ ...a.config, quoteMint: quote.mint }, network, quote.decimals)
+    }, [a, network])
 
     return (
         <div>
@@ -248,7 +255,7 @@ export function Studio() {
                             options={[
                                 { value: 'overview', label: 'Curve & supply' },
                                 { value: 'simulate', label: 'Simulate' },
-                                { value: 'lint', label: `Review${evaluation ? ` (${evaluation.lint.findings.filter((f) => f.severity !== 'good').length})` : ''}` },
+                                { value: 'lint', label: 'Review' },
                                 { value: 'config', label: 'On-chain config' },
                             ]}
                         />
@@ -287,14 +294,33 @@ export function Studio() {
                                 </>
                             )}
                             {tab === 'simulate' && (
-                                <Panel title="Simulation" hint="Agent-based market replay on the exact pool math">
+                                <Panel title="Simulation" hint="Agent-based market replay with SDK quotes and modeled pool transitions">
                                     <SimulationPanel a={a} runs={evaluation.runs} />
                                 </Panel>
                             )}
                             {tab === 'lint' && (
-                                <Panel title="Launch review" hint="Protocol checks plus economic findings backed by simulation">
-                                    <LintPanel report={evaluation.lint} />
-                                </Panel>
+                                <>
+                                    <Panel title="Design review" hint="Protocol checks and scenario-based design findings. The 0-100 score is a design heuristic.">
+                                        <LintPanel report={evaluation.lint} />
+                                    </Panel>
+                                    {draftAudit && (
+                                        <Panel title="Config audit before publishing" hint={`The same ${draftAudit.policy} checks as the live auditor, applied to this compiled design.`}>
+                                            <p className="mb-3 text-xs text-muted">Audit what you design before you publish. Fee claimer and receiver addresses are placeholders until a wallet publishes the config.</p>
+                                            <ul className="space-y-2">
+                                                {draftAudit.findings.map((finding) => (
+                                                    <li key={finding.id} className="flex gap-2.5 rounded-xl bg-surface-2 px-3 py-2.5">
+                                                        <SeverityIcon severity={finding.severity} />
+                                                        <div>
+                                                            <div className="text-[13px] font-semibold">{finding.title}</div>
+                                                            <div className="mt-0.5 text-xs leading-relaxed text-ink-2">{finding.detail}</div>
+                                                        </div>
+                                                    </li>
+                                                ))}
+                                                {!draftAudit.findings.length && <li className="text-sm text-muted">No configured terms flagged by these checks. This is not a safety certificate.</li>}
+                                            </ul>
+                                        </Panel>
+                                    )}
+                                </>
                             )}
                             {tab === 'config' && (
                                 <Panel title="What goes on chain" hint="The exact create_config parameters (Q64.64 sqrt prices, u128 liquidities, fee numerators)">

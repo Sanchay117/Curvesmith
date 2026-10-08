@@ -55,7 +55,7 @@ function DetailBody({ ev, extraTabs }: { ev: Evaluation; extraTabs?: { id: strin
                 </>
             )}
             {tab === 'simulate' && (
-                <Panel title="Simulation" hint="Agent-based market replay on the exact pool math">
+                <Panel title="Simulation" hint="Agent-based market replay with SDK quotes and modeled pool transitions">
                     <SimulationPanel a={a} runs={ev.runs} />
                 </Panel>
             )}

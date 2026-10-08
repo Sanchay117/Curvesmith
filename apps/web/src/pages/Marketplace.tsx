@@ -110,9 +110,9 @@ export function Marketplace() {
         <div>
             <section className="mb-10 grid grid-cols-1 gap-8 lg:grid-cols-[1.25fr_1fr] lg:items-end">
                 <div>
-                    <h1 className="lp-pop text-4xl leading-[1.08] font-semibold tracking-tight sm:text-5xl">Review the terms. Find a reference config.</h1>
+                    <h1 className="lp-pop text-4xl leading-[1.08] font-semibold tracking-tight sm:text-5xl">Audit a config before you launch.</h1>
                     <p className="lp-pop mt-4 max-w-lg text-[16px] leading-relaxed text-ink-2" style={{ animationDelay: '80ms' }}>
-                        Every preset is a real DBC config. Launch a token from one, or publish your own and earn on every launch.
+                        These on-chain listings are reference configs, not endorsements. Inspect the terms, then launch from one or publish your own.
                     </p>
                     <div className="lp-pop mt-6 flex flex-wrap gap-2" style={{ animationDelay: '160ms' }}>
                         <Link to="/studio">

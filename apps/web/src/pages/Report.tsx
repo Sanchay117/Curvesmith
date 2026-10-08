@@ -248,7 +248,7 @@ const SIGNALS = [
 const STEPS = [
     { title: 'Audit', body: 'Read any live config: liquidity, supply, fees, migration.', to: '#audit', cta: 'Paste a config', icon: 'M5 12l4 4L19 6' },
     { title: 'Design and simulate', body: 'Shape a curve, then replay snipers and crowds with SDK quotes and modeled pool transitions.', to: '/studio', cta: 'Open the Studio', icon: 'M4 18c5 0 7-3 9-7s4-6 7-6' },
-    { title: 'Publish and earn', body: 'Your preset becomes a real DBC config. Every launch from it pays you fees.', to: '/market', cta: 'Browse presets', icon: 'M12 3v18M5 10l7-7 7 7' },
+    { title: 'Publish and earn', body: 'Your preset becomes a real DBC config. Every launch from it pays you fees.', to: '/market', cta: 'Browse reference configs', icon: 'M12 3v18M5 10l7-7 7 7' },
 ]
 
 export function Report() {

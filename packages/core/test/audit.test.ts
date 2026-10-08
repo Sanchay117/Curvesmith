@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { Connection, PublicKey } from '@solana/web3.js'
 import { createDbcProgram, PoolConfig } from '@meteora-ag/dynamic-bonding-curve-sdk'
 import BN from 'bn.js'
-import { auditConfig, compilePreset, countPoolObservations, defaultPreset, deriveConfigState, QUOTE_ASSETS, readPoolCensusFields, residualSupply, specFromConfig } from '../src'
+import { analyzePreset, auditConfig, compilePreset, countPoolObservations, defaultPreset, deriveConfigState, lintPreset, QUOTE_ASSETS, readPoolCensusFields, residualSupply, specFromConfig } from '../src'
 
 function config() {
     return deriveConfigState(compilePreset(defaultPreset()).params, {
@@ -60,6 +60,15 @@ describe('configuration audit', () => {
         c.poolFees.baseFee.baseFeeMode = 2
         expect(has(c, 'no-time-decay')).toBeUndefined()
         expect(has(c, 'other-fee-mode')?.severity).toBe('info')
+    })
+    test('Studio lint and on-chain review give no time decay the same severity', () => {
+        const spec = defaultPreset()
+        spec.fees.schedule.endBps = spec.fees.schedule.startBps
+        const analyzed = analyzePreset(spec)
+        const lint = lintPreset(analyzed)
+        const audit = auditConfig(analyzed.config, 'mainnet-beta')
+        expect(lint.findings.find((finding) => finding.id === 'no-time-decay')?.severity).toBe('info')
+        expect(audit.findings.find((finding) => finding.id === 'no-time-decay')?.severity).toBe('info')
     })
     test('flags a 30% opening fee and says when it decays', () => {
         const c = config()

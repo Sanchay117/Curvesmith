@@ -1,6 +1,6 @@
 /**
  * Launch linting: protocol errors the chain would reject, plus economic findings the chain
- * happily accepts but traders and creators pay for. Produces a 0-100 health score.
+ * happily accepts but traders and creators pay for. Produces a 0-100 design heuristic.
  */
 import { PublicKey } from '@solana/web3.js'
 import { validateConfigParameters } from '@meteora-ag/dynamic-bonding-curve-sdk'
@@ -79,12 +79,12 @@ export function lintPreset(a: AnalyzedPreset, ctx: LintContext = {}): LintReport
     // ---- sniper economics ----------------------------------------------------------------
     const s = spec.fees.schedule
     const decays = s.startBps > s.endBps
-    if (!decays && s.startBps < 1000 && spec.pricing.shape.kind !== 'flat' && spec.pricing.shape.kind !== 'tranches') {
+    if (!decays) {
         add({
-            id: 'sniper-tax',
-            severity: 'warning',
-            title: 'No anti-sniper fee',
-            detail: `The first block pays the same ${pct(s.startBps / 100, 2)} fee as everyone else. Bots can buy the bottom of the curve cheaply. A decaying fee (e.g. 50% to 1% over 2 minutes) taxes them instead.`,
+            id: 'no-time-decay',
+            severity: 'info',
+            title: 'No time-decaying base fee',
+            detail: `The opening fee is ${pct(s.startBps / 100, 2)} without a time decay. This alone does not establish sniping risk or the absence of other protections.`,
         })
     }
     if (decays && s.duration > 3600 && s.startBps > 1000) {

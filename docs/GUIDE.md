@@ -59,7 +59,7 @@ quote paid for them            = L * (sqrtP_high - sqrtP_low)
               |            @launchproof/core  (TypeScript)    |
               |  preset -> curve compiler -> ConfigParameters |
               |  onchain derivation -> SimPool -> scenarios   |
-              |  analysis -> lint -> health score             |
+              |  analysis -> lint -> design heuristic         |
               |  CSR-1 registry  |  tx builders  |  stats     |
               +---------+-------------+-------------+---------+
                         |             |             |
@@ -133,7 +133,7 @@ Agents: a creator first buy (bundled with launch, so it can pay the minimum fee)
 
 Analysis reads the compiled config back: raise, market caps, supply split (sold on curve / paired in LP / creator allocation / leftover), average buyer multiple at graduation, opening price impact, graduated-pool impact for a 1 SOL or 1,000 USDC trade, fee schedule.
 
-Lint has two layers: the SDK's own `validateConfigParameters` (what the chain would reject) and economic findings backed by numbers and simulation. Severities map to a score (critical -40, warning -12, info -4) and a grade. The **leftover-supply** rule was added after auditing a live mainnet config that leaves 90% of its supply to the launchpad's wallet; that audit also exposed a supply-estimation bug for dynamic-supply configs, now fixed and covered by a test.
+Lint has two layers: the SDK's own `validateConfigParameters` (what the chain would reject) and economic findings backed by numbers and simulation. Severities map to a 0-100 design heuristic (critical -40, warning -12, info -4) and a grade, not a safety certificate. The **leftover-supply** rule was added after auditing a live mainnet config that leaves 90% of its supply to the leftover receiver; that audit also exposed a supply-estimation bug for dynamic-supply configs, now fixed and covered by a test.
 
 ### 5.7 The CSR-1 registry (`registry.ts`, `docs/CSR-1.md`)
 
@@ -225,7 +225,7 @@ pnpm --filter @launchproof/web build   # static site in apps/web/dist
 ```
 
 **Suggested 3-minute demo.**
-1. State of DBC: observation window, audit coverage, pool-weighted findings, and source account archive. Then open Presets for the devnet marketplace.
+1. State of DBC: observation window, audit coverage, pool-weighted findings, and source account archive. Then open Reference configs for the devnet marketplace.
 2. Studio: start from Fair Meme, switch the shape to Tranches and then Freehand, watch the curve, supply split and grade update; open Simulate and compare Sniper rush ROI with the fee decay on versus a flat 1% fee.
 3. Open State of DBC, inspect a config, download its audit receipt, and reproduce it with `pnpm cli verify-receipt <file>`. Explain snapshot coverage and the difference between migration and demand.
 4. With the Devnet Burner: open Micro Speedrun, launch a token with a first buy, buy it to graduation (the quote shows the partial fill), click Graduate to DAMM v2, then claim author and creator fees on the Earnings page. Watch the sniper fee decay live in the buy quote during the first 30 seconds.

@@ -57,7 +57,7 @@ pnpm cli inspect fair-meme
 
 ## Try the lifecycle on devnet
 
-Open **Presets**, connect a Devnet Burner wallet, fund it through the network menu or [Solana's faucet](https://faucet.solana.com), then choose **Micro Speedrun**. Launch, buy until the curve completes, migrate into DAMM v2, and inspect Earnings. Devnet tokens have no monetary value.
+Open **Reference configs**, connect a Devnet Burner wallet, fund it through the network menu or [Solana's faucet](https://faucet.solana.com), then choose **Micro Speedrun**. Launch, buy until the curve completes, migrate into DAMM v2, and inspect Earnings. Devnet tokens have no monetary value.
 
 ```bash
 pnpm cli presets

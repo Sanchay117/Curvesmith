@@ -187,7 +187,7 @@ export function Earnings() {
                             empty="You have not launched a token yet"
                             hint={
                                 <>
-                                    Launch from any preset and your creator share shows up here. <Link to="/market" className="font-semibold text-accent hover:underline">Browse presets</Link>
+                                    Launch from any preset and your creator share shows up here. <Link to="/market" className="font-semibold text-accent hover:underline">Browse reference configs</Link>
                                 </>
                             }
                         />
