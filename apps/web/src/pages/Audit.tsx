@@ -95,7 +95,7 @@ export function Audit() {
                         </div>
                         <div>
                             <div className="text-lg font-semibold">{flagged.length ? `${flagged.length} ${flagged.length === 1 ? 'term' : 'terms'} to read before you buy` : 'No flagged terms'}</div>
-                            <div className="text-sm text-ink-2">{flagged.length ? flagged.map((f) => f.title).join(' · ') : 'No configured term tripped a finding.'} Seven term checks run; this is not a safety certificate.</div>
+                            <div className="text-sm text-ink-2">{flagged.length ? flagged.map((f) => f.title).join(' · ') : 'No configured term tripped a finding.'} {audit.policy === 'launchproof/config-review@2' ? 'Eleven' : 'Seven'} term checks ran; this is not a safety certificate.</div>
                         </div>
                     </div>
 
@@ -147,6 +147,39 @@ export function Audit() {
                             </a>
                             : amounts are in its own units, not SOL or USD.
                         </p>
+                    )}
+
+                    {audit.policy === 'launchproof/config-review@2' && (
+                        <Reveal className="mt-8">
+                            <Card>
+                                <h2 className="text-xl font-semibold">Who gets paid</h2>
+                                <p className="mt-1 text-sm text-ink-2">Configured shares and destinations, not a record of fees actually collected.</p>
+                                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                    <div className="rounded-xl bg-surface-2 p-4">
+                                        <div className="text-xs font-medium text-muted">Trading fees after protocol share</div>
+                                        <div className="mt-1 font-semibold">Creator {audit.creatorTradingFeePct}% · Partner {audit.partnerTradingFeePct}%</div>
+                                        <div className="mt-1 break-all font-mono text-xs text-ink-2">Fee claimer: {audit.feeClaimer}</div>
+                                    </div>
+                                    <div className="rounded-xl bg-surface-2 p-4">
+                                        <div className="text-xs font-medium text-muted">Migration fee</div>
+                                        <div className="mt-1 font-semibold">{audit.migrationFeePct}% of configured raise · option {audit.migrationFeeOption}</div>
+                                        <div className="mt-1 text-xs text-ink-2">If collected: creator {audit.creatorMigrationFeePct}% · partner {audit.partnerMigrationFeePct}%</div>
+                                    </div>
+                                    <div className="rounded-xl bg-surface-2 p-4">
+                                        <div className="text-xs font-medium text-muted">After migration</div>
+                                        <div className="mt-1 font-semibold">{audit.migration} · {audit.postMigrationPoolFeeBps === null ? 'pool fee not classified here' : `${(audit.postMigrationPoolFeeBps / 100).toFixed(2)}% base pool fee`}</div>
+                                        <div className="mt-1 text-xs text-ink-2">LP vesting: partner {audit.partnerVesting.percentage}% · creator {audit.creatorVesting.percentage}%</div>
+                                    </div>
+                                    <div className="rounded-xl bg-surface-2 p-4">
+                                        <div className="text-xs font-medium text-muted">Base token and residual receiver</div>
+                                        <div className="mt-1 font-semibold">{audit.tokenType}</div>
+                                        <div className="mt-1 break-all font-mono text-xs text-ink-2">{audit.leftoverReceiver}</div>
+                                        <div className="mt-1 text-xs text-ink-2">{audit.leftoverReceiverIsFeeClaimer ? 'Same address as fee claimer' : 'Different from fee claimer'}</div>
+                                    </div>
+                                </div>
+                                <p className="mt-3 text-xs text-muted">Vesting percentages describe the configured share of migrated LP. The account receipt includes the full vesting schedule fields.</p>
+                            </Card>
+                        </Reveal>
                     )}
 
                     {/* findings */}

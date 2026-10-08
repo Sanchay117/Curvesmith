@@ -16,7 +16,7 @@ The report describes **observed existing standard VirtualPool accounts**, not ev
 
 Two scans plus validation and config reads can take several minutes and download hundreds of MB. Full raw RPC responses are gzipped, hashed, and cached locally. `--resume` reuses completed requests and may extend the observation window; `--offline` performs no network requests and requires a complete archive. Use a fresh cache directory for a new census. The CLI verifies saved requests against the requested parameters.
 
-## Review policy: `launchproof/config-review@1`
+## Review policy: `launchproof/config-review@2`
 
 | Check | Rule | Interpretation |
 | --- | --- | --- |
@@ -26,6 +26,12 @@ Two scans plus validation and config reads can take several minutes and download
 | Migration fee | Configured fee >10% | Quote is allocated as a fee before liquidity is deposited. |
 | Time decay | Supported time scheduler with nonzero periods, interval, and reduction | No time decay is informational. Rate limiters and other fee modes are classified separately. |
 | Custom quote | Mint is not recognized SOL/USDC | Keep identity and precision explicit; raw units when precision is unresolved. |
+| High opening fee | At least 30% | A warning; notes whether the configured scheduler decays the fee. |
+| DAMM v1 migration | Migration option 0 | Legacy path, so DAMM v2 fee and LP behavior must not be inferred. |
+| Token-2022 | Base token type 1 | Mint extensions require separate inspection. |
+| Shared fee and residual receiver | Same address with residual supply above 5% | This address receives both configured entitlements; no collection is inferred. |
+
+The audit also reports creator and partner shares of trading and migration fees, the migration fee option, effective DAMM v2 base pool fee for fixed or customizable options, both LP vesting schedules, base-token program, fee-claimer address, and residual receiver. Trading-fee shares divide the portion after any protocol fee. A zero migration fee means no migration fee is payable regardless of its configured split. These fields describe config terms; they do not prove distributions or token-mint extension safety. Older `launchproof/config-review@1` receipts remain verifiable offline under their original policy.
 
 The report assigns **no blanket safety grade**. Studio lint scores are a separate design heuristic with scenario assumptions; they are not the report's policy. The report does not simulate every audited config. The top-N findings are observed-pool weighted; the single-pool sample estimates config shares only within that stratum.
 

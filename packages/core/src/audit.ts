@@ -1,14 +1,27 @@
 import BN from 'bn.js'
 import Decimal from 'decimal.js'
+import { Connection, PublicKey } from '@solana/web3.js'
+import { unpackMint, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from '@solana/spl-token'
 import { PoolConfig } from '@meteora-ag/dynamic-bonding-curve-sdk'
 import { Network, quoteAssetByMint } from './constants'
 import { Finding } from './lint'
 import { initialBaseSupply } from './sim/pool'
 
-export const AUDIT_POLICY = 'launchproof/config-review@1'
+export const AUDIT_POLICY_V1 = 'launchproof/config-review@1'
+export const AUDIT_POLICY = 'launchproof/config-review@2'
 
-export interface ConfigAudit {
-    policy: typeof AUDIT_POLICY
+export async function readQuoteMintDecimals(connection: Connection, mint: PublicKey): Promise<number | undefined> {
+    try {
+        const account = await connection.getAccountInfo(mint)
+        if (account && (account.owner.equals(TOKEN_PROGRAM_ID) || account.owner.equals(TOKEN_2022_PROGRAM_ID))) {
+            return unpackMint(mint, account, account.owner).decimals
+        }
+    } catch { /* Keep unresolved amounts in raw units. */ }
+    return undefined
+}
+
+export interface ConfigAuditV1 {
+    policy: typeof AUDIT_POLICY_V1
     quoteMint: string
     quoteSymbol: string | null
     quoteDecimals: number | null
@@ -20,8 +33,8 @@ export interface ConfigAudit {
     timeFeeDecay: boolean | null
     dynamicFee: boolean
     unlockedLiquidityPct: number
-    partnerUnlockedLiquidityPct: number
-    creatorUnlockedLiquidityPct: number
+    partnerUnlockedLiquidityPct?: number
+    creatorUnlockedLiquidityPct?: number
     permanentlyLockedLiquidityPct: number
     mintAuthorityRetained: boolean | null
     leftoverSupplyPct: number
@@ -29,6 +42,24 @@ export interface ConfigAudit {
     segments: number
     priceMultiple: number
     findings: Finding[]
+}
+
+export interface ConfigAudit extends Omit<ConfigAuditV1, 'policy' | 'partnerUnlockedLiquidityPct' | 'creatorUnlockedLiquidityPct'> {
+    policy: typeof AUDIT_POLICY
+    partnerUnlockedLiquidityPct: number
+    creatorUnlockedLiquidityPct: number
+    creatorTradingFeePct: number
+    partnerTradingFeePct: number
+    migrationFeeOption: number
+    creatorMigrationFeePct: number
+    partnerMigrationFeePct: number
+    postMigrationPoolFeeBps: number | null
+    partnerVesting: { percentage: number; periods: number; bpsPerPeriod: number; frequencySeconds: number; cliffSeconds: number }
+    creatorVesting: { percentage: number; periods: number; bpsPerPeriod: number; frequencySeconds: number; cliffSeconds: number }
+    tokenType: 'SPL Token' | 'Token-2022' | 'unknown'
+    leftoverReceiver: string
+    feeClaimer: string
+    leftoverReceiverIsFeeClaimer: boolean
 }
 
 /** Configured residual supply after the protocol's migration burn, not the dynamic mint buffer. */
@@ -45,7 +76,7 @@ export function residualSupply(config: PoolConfig): { leftover: BN; burned: BN }
 }
 
 /** Read-only checks on decoded fields. No price feed, simulation, identity inference, or security certification. */
-export function auditConfig(config: PoolConfig, network: Network, mintDecimals?: number): ConfigAudit {
+export function auditConfigV1(config: PoolConfig, network: Network, mintDecimals?: number): ConfigAuditV1 {
     const quote = quoteAssetByMint(network, config.quoteMint)
     const decimals = quote?.decimals ?? mintDecimals ?? null
     if (decimals !== null && (!Number.isInteger(decimals) || decimals < 0 || decimals > 255)) {
@@ -69,7 +100,7 @@ export function auditConfig(config: PoolConfig, network: Network, mintDecimals?:
     if (!quote) findings.push({ id: 'custom-quote', severity: 'info', title: 'Custom quote mint', detail: 'Amounts are in this mint, never assumed to be SOL or USD. The mint address identifies the asset; no market value is inferred.' })
     if (timeFeeDecay === null) findings.push({ id: 'other-fee-mode', severity: 'info', title: 'Non-time-based fee mode', detail: 'Rate-limiter and market-cap fee schedules are not classified as time decay by this report.' })
     return {
-        policy: AUDIT_POLICY, quoteMint: config.quoteMint.toBase58(), quoteSymbol: quote?.symbol ?? null,
+        policy: AUDIT_POLICY_V1, quoteMint: config.quoteMint.toBase58(), quoteSymbol: quote?.symbol ?? null,
         quoteDecimals: decimals, raiseRaw: config.migrationQuoteThreshold.toString(),
         raise: decimals === null ? null : new Decimal(config.migrationQuoteThreshold.toString()).div(new Decimal(10).pow(decimals)).toFixed(),
         migration: config.migrationOption === 0 ? 'DAMM v1' : config.migrationOption === 1 ? 'DAMM v2' : 'unknown',
@@ -83,6 +114,57 @@ export function auditConfig(config: PoolConfig, network: Network, mintDecimals?:
         migrationFeePct: config.migrationFeePercentage,
         segments: config.curve.filter((c) => !c.liquidity.isZero()).length,
         priceMultiple: new Decimal(config.migrationSqrtPrice.toString()).div(config.sqrtStartPrice.toString()).pow(2).toNumber(),
+        findings,
+    }
+}
+
+/** Policy 2 exposes payment destinations and migration terms, with explicit limits on interpretation. */
+export function auditConfig(config: PoolConfig, network: Network, mintDecimals?: number): ConfigAudit {
+    const previous = auditConfigV1(config, network, mintDecimals)
+    const vesting = (info: PoolConfig['partnerLiquidityVestingInfo']) => ({
+        percentage: info.isInitialized === 1 ? info.vestingPercentage : 0,
+        periods: info.isInitialized === 1 ? info.numberOfPeriods : 0,
+        bpsPerPeriod: info.isInitialized === 1 ? info.bpsPerPeriod : 0,
+        frequencySeconds: info.isInitialized === 1 ? info.frequency : 0,
+        cliffSeconds: info.isInitialized === 1 ? info.cliffDurationFromMigrationTime : 0,
+    })
+    const fixedPoolFees = [25, 30, 100, 200, 400, 600]
+    const postMigrationPoolFeeBps = config.migrationOption !== 1 ? null
+        : config.migrationFeeOption === 6 ? config.migratedPoolFeeBps : fixedPoolFees[config.migrationFeeOption] ?? null
+    const sameReceiver = config.leftoverReceiver.equals(config.feeClaimer)
+    const findings = [...previous.findings]
+    if (previous.openingFeeBps >= 3000) findings.push({
+        id: 'high-opening-fee', severity: 'warning', title: `${(previous.openingFeeBps / 100).toFixed(1)}% opening fee`,
+        detail: previous.timeFeeDecay ? 'The configured opening fee is high, but the time scheduler decays it. Check the duration and settled rate before trading.' : 'The configured opening fee is high. This review found no active time decay; inspect the fee mode before trading.',
+    })
+    if (config.migrationOption === 0) findings.push({
+        id: 'damm-v1-migration', severity: 'info', title: 'DAMM v1 migration',
+        detail: 'This legacy migration path differs from DAMM v2. The DAMM v2 fee and LP behavior shown for other configs does not apply here.',
+    })
+    if (config.tokenType === 1) findings.push({
+        id: 'token-2022', severity: 'info', title: 'Token-2022 base token',
+        detail: 'The base token uses Token-2022. Review its mint extensions separately; this configuration review does not inspect the token mint.',
+    })
+    if (sameReceiver && previous.leftoverSupplyPct > 5) findings.push({
+        id: 'same-leftover-fee-claimer', severity: 'info', title: 'Fee claimer also receives residual supply',
+        detail: 'The same configured address receives partner fees and any residual base tokens after migration. This does not prove the address exercised either permission.',
+    })
+    return {
+        ...previous, policy: AUDIT_POLICY,
+        partnerUnlockedLiquidityPct: config.partnerLiquidityPercentage,
+        creatorUnlockedLiquidityPct: config.creatorLiquidityPercentage,
+        creatorTradingFeePct: config.creatorTradingFeePercentage,
+        partnerTradingFeePct: 100 - config.creatorTradingFeePercentage,
+        migrationFeeOption: config.migrationFeeOption,
+        creatorMigrationFeePct: config.creatorMigrationFeePercentage,
+        partnerMigrationFeePct: 100 - config.creatorMigrationFeePercentage,
+        postMigrationPoolFeeBps,
+        partnerVesting: vesting(config.partnerLiquidityVestingInfo),
+        creatorVesting: vesting(config.creatorLiquidityVestingInfo),
+        tokenType: config.tokenType === 0 ? 'SPL Token' : config.tokenType === 1 ? 'Token-2022' : 'unknown',
+        leftoverReceiver: config.leftoverReceiver.toBase58(),
+        feeClaimer: config.feeClaimer.toBase58(),
+        leftoverReceiverIsFeeClaimer: sameReceiver,
         findings,
     }
 }

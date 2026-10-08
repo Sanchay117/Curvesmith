@@ -1,12 +1,13 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { createRequire } from 'node:module'
 import { createHash } from 'node:crypto'
 import { gzipSync, gunzipSync } from 'node:zlib'
 import { Connection, PublicKey } from '@solana/web3.js'
 import { unpackMint, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from '@solana/spl-token'
 import { createDbcProgram, PoolConfig, VirtualPool } from '@meteora-ag/dynamic-bonding-curve-sdk'
 import {
-    auditConfig, CensusReport, CensusRow, countPoolObservations, DBC_PROGRAM_ID,
+    auditConfig, auditConfigV1, AUDIT_POLICY_V1, CensusReport, CensusRow, countPoolObservations, DBC_PROGRAM_ID,
     Network, POOL_CONFIG_OFFSET, POOL_MIGRATED_OFFSET, readPoolCensusFields, VIRTUAL_POOL_DISCRIMINATOR,
 } from '@launchproof/core'
 
@@ -14,6 +15,9 @@ type RpcAccount = { owner: string; data: [string, 'base64']; executable: boolean
 type RpcResult<T> = { context: { slot: number }; value: T }
 type PoolRecord = { pubkey: string; account: RpcAccount }
 const hash = (data: Uint8Array) => createHash('sha256').update(data).digest('hex')
+const require = createRequire(import.meta.url)
+const sdkPackage = path.join(path.dirname(require.resolve('@meteora-ag/dynamic-bonding-curve-sdk')), '..', 'package.json')
+const sdkVersion = (JSON.parse(fs.readFileSync(sdkPackage, 'utf8')) as { version: string }).version
 const TAIL_SEED = 'launchproof-single-pool-v1'
 
 function selectTail(rows: CensusRow[], size: number, seed: string): CensusRow[] {
@@ -258,7 +262,7 @@ export async function buildCensus(rpcUrl: string, network: Network, options: Cen
     const audited = top.filter((r) => r.audit)
     const report: CensusReport = {
         schema: 'launchproof/census@1', generatedAt: new Date().toISOString(), observedAt: new Date(Math.max(...observationTimes)).toISOString(), network, programId: DBC_PROGRAM_ID.toBase58(),
-        sdkVersion: '1.5.13', source, commitment: 'finalized', slots, pools: poolCount, migrated: migratedCount, configs: rows.length,
+        sdkVersion, source, commitment: 'finalized', slots, pools: poolCount, migrated: migratedCount, configs: rows.length,
         scope: 'Existing standard VirtualPool accounts observed across two finalized scans. Excludes transfer-hook pools and closed accounts. This is an observation window, not a historical launch count or a single-slot snapshot. Migration is a program flag, not evidence of users, demand, volume, or misconduct.',
         duplicateObservations: duplicates, auditedConfigs: audited.length, auditedPools: audited.reduce((n, r) => n + r.pools, 0),
         failures: top.length - audited.length, validation: { checked, mismatches: 0 }, evidence, rows: top,
@@ -310,7 +314,13 @@ export function verifyCensus(reportPath: string, cachePath?: string) {
             if (!owner.equals(TOKEN_PROGRAM_ID) && !owner.equals(TOKEN_2022_PROGRAM_ID)) throw new Error('Invalid mint owner')
             precision = unpackMint(config.quoteMint, { data: Buffer.from(mint.data, 'base64'), owner, lamports: 0, executable: false }, owner).decimals
         }
-        if (JSON.stringify(auditConfig(config, report.network, precision)) !== JSON.stringify(row.audit)) throw new Error(`Review mismatch ${row.address}`)
+        const recordedPolicy: string = row.audit.policy
+        const reproduced = recordedPolicy === AUDIT_POLICY_V1 ? auditConfigV1(config, report.network, precision) : auditConfig(config, report.network, precision)
+        if (recordedPolicy === AUDIT_POLICY_V1 && !('partnerUnlockedLiquidityPct' in row.audit) && !('creatorUnlockedLiquidityPct' in row.audit)) {
+            delete (reproduced as Partial<typeof reproduced>).partnerUnlockedLiquidityPct
+            delete (reproduced as Partial<typeof reproduced>).creatorUnlockedLiquidityPct
+        }
+        if (JSON.stringify(reproduced) !== JSON.stringify(row.audit)) throw new Error(`Review mismatch ${row.address}`)
         verified++
     }
     for (const sample of evidence.samples) {
@@ -330,6 +340,7 @@ export function verifyCensus(reportPath: string, cachePath?: string) {
             if (JSON.stringify(selection) !== JSON.stringify(addresses)) throw new Error('Tail selection differs from complete count archive')
         }
         const reviews: CensusRow[] = []
+        const tailPolicy: string | undefined = report.rows.find((row) => row.audit)?.audit?.policy
         for (const entry of evidence.tail) {
             if (!entry.data) continue
             const bytes = Buffer.from(entry.data, 'base64')
@@ -342,7 +353,7 @@ export function verifyCensus(reportPath: string, cachePath?: string) {
                 precision = unpackMint(config.quoteMint, { data: Buffer.from(mint.data, 'base64'), owner, lamports: 0, executable: false }, owner).decimals
             }
             try {
-                reviews.push({ address: entry.address, pools: 1, migrated: 0, samplePool: '', configHash: hash(bytes), audit: auditConfig(config, report.network, precision) })
+                reviews.push({ address: entry.address, pools: 1, migrated: 0, samplePool: '', configHash: hash(bytes), audit: tailPolicy === AUDIT_POLICY_V1 ? auditConfigV1(config, report.network, precision) as unknown as CensusRow['audit'] : auditConfig(config, report.network, precision) })
             } catch {
                 if (!entry.error) throw new Error(`Unexpected tail review failure ${entry.address}`)
             }

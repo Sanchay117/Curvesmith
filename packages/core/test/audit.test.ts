@@ -12,6 +12,91 @@ function config() {
 }
 
 describe('configuration audit', () => {
+    const has = (c: ReturnType<typeof config>, id: string) => auditConfig(c, 'mainnet-beta').findings.find((finding) => finding.id === id)
+    function fixedResidual(leftover: number) {
+        const c = config()
+        c.fixedTokenSupplyFlag = 1
+        c.preMigrationTokenSupply = new BN(10_000)
+        c.postMigrationTokenSupply = new BN(10_000)
+        c.swapBaseAmount = new BN(10_000 - leftover)
+        c.migrationBaseThreshold = new BN(0)
+        c.lockedVestingConfig.amountPerPeriod = new BN(0)
+        c.lockedVestingConfig.cliffUnlockAmount = new BN(0)
+        return c
+    }
+    test('flags majority unlocked LP only above 50%', () => {
+        const c = config()
+        c.partnerLiquidityPercentage = 50
+        c.creatorLiquidityPercentage = 0
+        expect(has(c, 'unlocked-lp')).toBeUndefined()
+        c.creatorLiquidityPercentage = 1
+        expect(has(c, 'unlocked-lp')?.severity).toBe('warning')
+    })
+    test('flags retained mint authority modes', () => {
+        const c = config()
+        c.tokenUpdateAuthority = 2
+        expect(has(c, 'mint-authority')).toBeUndefined()
+        c.tokenUpdateAuthority = 3
+        expect(has(c, 'mint-authority')?.severity).toBe('warning')
+    })
+    test('uses strict 5% and 50% residual supply thresholds', () => {
+        expect(has(fixedResidual(500), 'leftover-supply')).toBeUndefined()
+        expect(has(fixedResidual(501), 'leftover-supply')?.severity).toBe('warning')
+        expect(has(fixedResidual(5000), 'leftover-supply')?.severity).toBe('warning')
+        expect(has(fixedResidual(5001), 'leftover-supply')?.severity).toBe('critical')
+    })
+    test('flags migration fee only above 10%', () => {
+        const c = config()
+        c.migrationFeePercentage = 10
+        expect(has(c, 'migration-fee')).toBeUndefined()
+        c.migrationFeePercentage = 11
+        expect(has(c, 'migration-fee')?.severity).toBe('warning')
+    })
+    test('distinguishes absent time decay from another fee mode', () => {
+        const c = config()
+        c.poolFees.baseFee.baseFeeMode = 0
+        c.poolFees.baseFee.firstFactor = 0
+        expect(has(c, 'no-time-decay')?.severity).toBe('info')
+        c.poolFees.baseFee.baseFeeMode = 2
+        expect(has(c, 'no-time-decay')).toBeUndefined()
+        expect(has(c, 'other-fee-mode')?.severity).toBe('info')
+    })
+    test('flags a 30% opening fee and says when it decays', () => {
+        const c = config()
+        c.poolFees.baseFee.cliffFeeNumerator = new BN(299_900_000)
+        expect(has(c, 'high-opening-fee')).toBeUndefined()
+        c.poolFees.baseFee.cliffFeeNumerator = new BN(300_000_000)
+        expect(has(c, 'high-opening-fee')?.severity).toBe('warning')
+        expect(has(c, 'high-opening-fee')?.detail).toContain('decays')
+    })
+    test('flags legacy DAMM v1 and Token-2022 explicitly', () => {
+        const c = config()
+        c.migrationOption = 0
+        c.tokenType = 1
+        expect(has(c, 'damm-v1-migration')?.severity).toBe('info')
+        expect(has(c, 'token-2022')?.severity).toBe('info')
+    })
+    test('flags a fee claimer receiving more than 5% residual supply', () => {
+        const c = fixedResidual(501)
+        expect(has(c, 'same-leftover-fee-claimer')?.severity).toBe('info')
+        c.leftoverReceiver = new PublicKey('11111111111111111111111111111112')
+        expect(has(c, 'same-leftover-fee-claimer')).toBeUndefined()
+    })
+    test('reports fee splits, migrated pool fee, and LP vesting schedule', () => {
+        const c = config()
+        c.creatorTradingFeePercentage = 40
+        c.creatorMigrationFeePercentage = 30
+        c.migrationFeeOption = 1
+        c.partnerLiquidityVestingInfo.isInitialized = 1
+        c.partnerLiquidityVestingInfo.vestingPercentage = 20
+        c.partnerLiquidityVestingInfo.frequency = 86_400
+        const a = auditConfig(c, 'mainnet-beta')
+        expect(a).toMatchObject({ creatorTradingFeePct: 40, partnerTradingFeePct: 60, creatorMigrationFeePct: 30, partnerMigrationFeePct: 70, postMigrationPoolFeeBps: 30 })
+        expect(a.partnerVesting).toMatchObject({ percentage: 20, frequencySeconds: 86_400 })
+        c.migrationFeeOption = 6
+        c.migratedPoolFeeBps = 125
+        expect(auditConfig(c, 'mainnet-beta').postMigrationPoolFeeBps).toBe(125)
+    })
     test('never labels an unknown mint SOL, even when it has nine decimals', () => {
         const c = config()
         c.quoteMint = new PublicKey('11111111111111111111111111111112')

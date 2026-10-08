@@ -36,6 +36,7 @@ import {
     PRESET_SCHEMA,
     requireQuoteAsset,
     quoteSwap,
+    readQuoteMintDecimals,
     ScenarioResult,
     SCENARIOS,
     simulate,
@@ -156,9 +157,11 @@ tool(
     'Review DBC config terms directly: quote identity, unlocked LP, residual supply after burns, mint authority, migration fees. No wallet, simulation, or safety certification.',
     { address: z.string(), network: networkArg },
     async ({ address, network }) => {
-        const config = await dbcClient(rpc(network)).state.getPoolConfig(new PublicKey(address))
+        const connection = rpc(network)
+        const config = await dbcClient(connection).state.getPoolConfig(new PublicKey(address))
         if (!config) throw new Error(`No DBC config at ${address}`)
-        return { address, network, ...auditConfig(config, network) }
+        const decimals = await readQuoteMintDecimals(connection, config.quoteMint)
+        return { address, network, ...auditConfig(config, network, decimals) }
     }
 )
 

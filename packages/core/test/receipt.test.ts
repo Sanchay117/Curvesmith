@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, test } from 'vitest'
 import { Connection } from '@solana/web3.js'
 import { createDbcProgram, PoolConfig } from '@meteora-ag/dynamic-bonding-curve-sdk'
-import { auditConfig, AuditReceipt, ConfigAudit, sha256, toHex, verifyAuditReceipt } from '../src'
+import { auditConfig, auditConfigV1, AuditReceipt, ConfigAuditV1, sha256, toHex, verifyAuditReceipt } from '../src'
 
 const snapshot = JSON.parse(readFileSync(new URL('../../../apps/web/public/registry-devnet.json', import.meta.url), 'utf8'))
 const { program } = createDbcProgram(new Connection('http://localhost:8899'))
@@ -34,10 +34,11 @@ describe('offline receipt verification', () => {
     })
     test('accepts an earlier policy-1 receipt without the later LP split fields', () => {
         const r = receipt()
-        const legacyAudit: Partial<ConfigAudit> = { ...r.audit }
+        const config = program.coder.accounts.decode('poolConfig', Buffer.from(r.configData, 'base64')) as PoolConfig
+        const legacyAudit: ConfigAuditV1 = auditConfigV1(config, 'devnet')
         delete legacyAudit.partnerUnlockedLiquidityPct
         delete legacyAudit.creatorUnlockedLiquidityPct
-        const legacy = { ...r, audit: legacyAudit as ConfigAudit }
+        const legacy = { ...r, audit: legacyAudit }
         expect(verifyAuditReceipt(legacy)).toEqual(legacy.audit)
     })
 })

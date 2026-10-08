@@ -10,7 +10,7 @@ Launchproof is a configuration review and launch toolkit for Meteora's Dynamic B
 
 The **State of DBC** report scans existing standard mainnet DBC pool accounts, ranks their configs by observed pool count, and reviews the most-used configs. The page shows its observation window, audit coverage, excluded accounts, and any evaluation failures. Download its JSON and source account archive to inspect the results.
 
-A **configuration audit** reads a config directly without a wallet or registry listing. It supports custom quote mints without mislabeling them SOL. Download an audit receipt containing the account bytes, SHA-256 hash, slot, and review results; reproduce it offline with the CLI.
+A **configuration audit** reads a config directly without a wallet or registry listing. It reports fee splits, LP vesting, token type, receiver addresses, and migration terms, and supports custom quote mints without mislabeling them SOL. Download an audit receipt containing the account bytes, SHA-256 hash, slot, and review results; reproduce it offline with the CLI. Policy-1 receipts remain verifiable after the policy-2 expansion.
 
 A migration flag is a state transition, not evidence of demand, unique users, volume, or misconduct. These checks describe configured permissions and economic terms, not issuer trustworthiness or investment safety. See the [scope and reproducibility limits](docs/CENSUS.md).
 

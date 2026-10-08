@@ -53,6 +53,7 @@ import {
     quoteAssetByMint,
     requireQuoteAsset,
     quoteSwap,
+    readQuoteMintDecimals,
     SCENARIOS,
     simulate,
     specFromConfig,
@@ -68,7 +69,7 @@ import { buildCensus, verifyCensus } from './census'
 interface Ctx {
     network: Network
     connection: Connection
-    keypairPath: string
+    keypairPath?: string
 }
 
 const program = new Command()
@@ -111,7 +112,8 @@ program.command('audit <address>')
         const c = ctx()
         const config = await dbcClient(c.connection).state.getPoolConfig(new PublicKey(address))
         if (!config) throw new Error('DBC config not found')
-        console.log(JSON.stringify({ address, network: c.network, ...auditConfig(config, c.network) }, null, 2))
+        const decimals = await readQuoteMintDecimals(c.connection, config.quoteMint)
+        console.log(JSON.stringify({ address, network: c.network, ...auditConfig(config, c.network, decimals) }, null, 2))
     }))
 
 /** Where the user ran the command (pnpm scripts change cwd to the package; INIT_CWD keeps the original). */
@@ -121,14 +123,15 @@ function ctx(): Ctx {
     const o = program.opts<{ network: string; rpc?: string; keypair?: string }>()
     const network = (o.network === 'mainnet' ? 'mainnet-beta' : o.network) as Network
     if (network !== 'devnet' && network !== 'mainnet-beta') throw new Error(`unknown network ${o.network}`)
-    const local = path.resolve(userCwd, '.keys/id.json')
-    const keypairPath = o.keypair ? path.resolve(userCwd, o.keypair) : fs.existsSync(local) ? local : path.join(os.homedir(), '.config/solana/id.json')
+    const keypairPath = o.keypair ? path.resolve(userCwd, o.keypair) : undefined
     return { network, connection: new Connection(o.rpc ?? DEFAULT_RPC[network], 'confirmed'), keypairPath }
 }
 
 function signer(c: Ctx): Keypair {
-    if (!fs.existsSync(c.keypairPath)) throw new Error(`no keypair at ${c.keypairPath}. Run "launchproof keygen" first.`)
-    return Keypair.fromSecretKey(Uint8Array.from(JSON.parse(fs.readFileSync(c.keypairPath, 'utf8'))))
+    const local = path.resolve(userCwd, '.keys/id.json')
+    const keypairPath = c.keypairPath ?? (fs.existsSync(local) ? local : path.join(os.homedir(), '.config/solana/id.json'))
+    if (!fs.existsSync(keypairPath)) throw new Error(`no keypair at ${keypairPath}. Run "launchproof keygen" first.`)
+    return Keypair.fromSecretKey(Uint8Array.from(JSON.parse(fs.readFileSync(keypairPath, 'utf8'))))
 }
 
 async function send(c: Ctx, tx: Transaction, signers: Keypair[], label: string): Promise<string> {
