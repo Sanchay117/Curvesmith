@@ -4,7 +4,7 @@ The report describes **observed existing standard VirtualPool accounts**, not ev
 
 ## Collection
 
-`pnpm cli -n mainnet-beta census --limit 5000 --tail-sample 3000 --cache .cache/census-new`
+`pnpm cli -n mainnet-beta census --limit 5000 --tail-sample 3000 --cache .cache/census-v1`
 
 1. Query the DBC program with `getProgramAccounts`, finalized commitment, the SDK's standard VirtualPool discriminator, and `isMigrated` equal to 0 and then 1. Request only the 32-byte config address at byte offset 72. The migration byte is at offset 305, including the account discriminator. The lifecycle test checks both offsets against actual program-created accounts before and after migration.
 2. Deduplicate pool addresses across the two scans. If a pool migrates between scans, its later observation wins. Record both response slots. These queries do **not** create a single-slot snapshot. Closed accounts and transfer-hook pools are excluded; providers may have completeness limitations that sample validation cannot detect.
@@ -40,6 +40,8 @@ The audit also reports creator and partner shares of trading and migration fees,
 The report assigns **no blanket safety grade**. Studio lint scores are a separate design heuristic with scenario assumptions; they are not the report's policy. The report does not simulate every audited config. The top-N findings are observed-pool weighted; the single-pool sample estimates config shares only within that stratum.
 
 Headline finding percentages are **pool weighted among successfully audited configs**. Each row remains a config, not a launchpad. Config-count percentages, total observed pool coverage, and migration rates have different denominators. Categories overlap. Among reviewed pools with more than 50% LP initially unlocked, the creator side has the larger unlocked share in 575,710 of 893,724 pools (64.4%); the partner side leads in 315,187 (35.3%), and 2,827 tie. These describe migration terms, not observed withdrawals. An unflagged config is not a certified safe token.
+
+Among 594,623 reviewed observed pools whose configured residual-supply estimate exceeds 5%, 594,518 (99.9823%) use the config fee claimer as the leftover receiver. The denominator is pools attached to reviewed configs above that threshold, not configs or actual token withdrawals. `residualReceivers` records these counts and their ratio.
 
 ## Evidence and receipts
 

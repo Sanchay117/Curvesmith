@@ -102,7 +102,7 @@ describe('lifecycle on real programs', () => {
 
         // 4. graduate: anyone can call it. DBC's pool authority lends rent to the new DAMM v2
         // accounts ("flash rent") and is repaid in the same instruction; Meteora keeps it funded
-        // on devnet and mainnet, so mirror that here.
+        // on the observed devnet deployment, so mirror that fixture here.
         env.svm.airdrop(deriveDbcPoolAuthority(), BigInt(5 * LAMPORTS_PER_SOL))
         const cranker = env.funded()
         const dammConfig = DAMM_V2_MIGRATION_FEE_ADDRESS[config.migrationFeeOption]

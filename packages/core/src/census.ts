@@ -54,6 +54,7 @@ export interface CensusReport {
     auditedPools: number
     failures: number
     validation: { checked: number; mismatches: number }
+    residualReceivers?: { thresholdPct: number; pools: number; sameFeeClaimerPools: number; sameFeeClaimerShare: number }
     mintAuthorities?: {
         top: { flaggedConfigs: number; set: number; revoked: number; unavailable: number }
         tail: { flaggedConfigs: number; set: number; revoked: number; unavailable: number }

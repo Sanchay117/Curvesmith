@@ -88,8 +88,7 @@ export function About() {
                     0-100 design score is a heuristic, not a safety certification.
                 </Step>
                 <Step n={5} title="Publish: your preset becomes your launchpad" delay={280}>
-                    Publishing makes your wallet the config's fee claimer (partner), so every token launched from it pays you a share of trading and graduation
-                    fees. No custom program, no server, no permission.
+                    Publishing makes your wallet the config's fee claimer (partner). Its configured share of DBC trading fees accrues when launched tokens trade. Earnings claims those DBC fees.
                 </Step>
                 <Step n={6} title="An on-chain registry with no indexer (CSR-1)" delay={350}>
                     A listing is a memo plus a 0-lamport transfer to a keyless registry address, <code className="font-mono text-[13px]">sha256("curvesmith:registry:v1")</code>.
@@ -98,7 +97,7 @@ export function About() {
                 </Step>
                 <Step n={7} title="Launch, trade, graduate, claim" delay={420} className="md:col-span-2">
                     Creators launch from any preset with a bundled first buy. Once the raise is met, anyone can graduate the token into DAMM v2, and authors and
-                    creators claim their fees from Earnings.
+                    creators can claim accrued DBC trading fees from Earnings. Migration fees, residual tokens and DAMM v2 fees require separate tools.
                 </Step>
             </div>
 

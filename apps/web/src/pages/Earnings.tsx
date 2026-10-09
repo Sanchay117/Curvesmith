@@ -162,7 +162,7 @@ export function Earnings() {
         <div>
             <Reveal>
                 <h1 className="text-3xl font-semibold tracking-tight">Earnings</h1>
-                <p className="mt-1 mb-8 text-[14px] text-ink-2">Authors earn the partner share of every trade on their launches. Creators earn their share of their own token's fees.</p>
+                <p className="mt-1 mb-8 text-[14px] text-ink-2">Claim accrued DBC trading fees for the configured partner and creator shares. Migration fees, residual tokens and DAMM v2 fees are not claimed here.</p>
             </Reveal>
             {loading ? (
                 <Skeleton className="h-64" />

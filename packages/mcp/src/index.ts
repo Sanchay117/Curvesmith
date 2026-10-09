@@ -2,8 +2,8 @@
 /**
  * Launchproof MCP server: lets AI agents design, simulate, review and launch Meteora DBC presets.
  *
- * Design rule: this server never holds or asks for private keys. Every write action returns
- * an unsigned (or partially signed, for fresh config/mint keys) base64 transaction that the
+ * Design rule: this server never holds or asks for a wallet's private key. Every write action returns
+ * an unsigned (or partially signed, with config/mint keypairs generated per transaction) base64 transaction that the
  * agent's own wallet signs and submits.
  *
  * Run: pnpm mcp      (stdio transport)

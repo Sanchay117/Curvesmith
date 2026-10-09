@@ -8,7 +8,7 @@ Launchproof is a configuration review and launch toolkit for Meteora's Dynamic B
 
 ## Start with evidence
 
-The **State of DBC** report scans existing standard mainnet DBC pool accounts, ranks their configs by observed pool count, and reviews the most-used configs. The page shows its observation window, audit coverage, excluded accounts, and any evaluation failures. Download its JSON and source account archive to inspect the results.
+The **State of DBC** report scans existing standard mainnet DBC pool accounts, ranks their configs by observed pool count, and reviews the most-used configs. The page shows its observation window, audit coverage, account types excluded from scope, and any evaluation failures. Download its JSON and source account archive to inspect the results.
 
 A **configuration audit** reads a config directly without a wallet or registry listing. It reports fee splits, LP vesting, token type, receiver addresses, and migration terms, and supports custom quote mints without mislabeling them SOL. Download an audit receipt containing the account bytes, SHA-256 hash, slot, and review results; reproduce it offline with the CLI. Policy-1 receipts remain verifiable after the policy-2 expansion.
 
@@ -36,20 +36,20 @@ pnpm test           # offline unit, differential, and lifecycle tests
 pnpm build          # apps/web/dist
 ```
 
-Tests run sequentially on macOS in CI because the pinned LiteSVM Linux build has a documented native-memory failure. Deployment requires passing tests and a production build.
+Tests run sequentially on macOS in CI because the pinned LiteSVM Linux build has a native-memory failure noted in the [CI workflow](.github/workflows/pages.yml). Deployment requires passing tests and a production build.
 
 ## Reproduce the report
 
 ```bash
 # Read-only: no keypair or SOL required. Full scans can download hundreds of MB.
-pnpm cli -n mainnet-beta census --limit 5000 --tail-sample 3000 --cache .cache/census-new
+pnpm cli -n mainnet-beta census --limit 5000 --tail-sample 3000 --cache .cache/census-v1
 # Resume a partially completed collection, or recompute from a complete archive:
-pnpm cli -n mainnet-beta census --limit 5000 --tail-sample 3000 --cache .cache/census-new --resume
-pnpm cli -n mainnet-beta census --limit 5000 --tail-sample 3000 --cache .cache/census-new --offline
+pnpm cli -n mainnet-beta census --limit 5000 --tail-sample 3000 --cache .cache/census-v1 --resume
+pnpm cli -n mainnet-beta census --limit 5000 --tail-sample 3000 --cache .cache/census-v1 --offline
 
 pnpm cli -n mainnet-beta audit <config-address>
 pnpm cli verify-receipt <downloaded-receipt.json>
-pnpm cli verify-census apps/web/public/census-mainnet-beta.json --cache .cache/census-new
+pnpm cli verify-census apps/web/public/census-mainnet-beta.json --cache .cache/census-v1
 pnpm cli inspect fair-meme
 ```
 
@@ -84,7 +84,7 @@ Other commands include `launch`, `buy`, `sell`, `status`, `graduate`, `claim`, a
 }
 ```
 
-The MCP exposes `get_state_of_dbc`, `get_census_row`, `audit_config`, `inspect_config`, template evaluation and simulation, market/pool reads, and unsigned publish, launch, and swap transaction builders. It does not expose migrate or claim builders. Builders return transactions for an external wallet to sign. RPC overrides: `LAUNCHPROOF_RPC_DEVNET` and `LAUNCHPROOF_RPC_MAINNET`. Browser defaults use `VITE_RPC_DEVNET` and `VITE_RPC_MAINNET`; these values are public in the bundle.
+The MCP exposes `get_state_of_dbc`, `get_census_row`, `audit_config`, `inspect_config`, template evaluation and simulation, market/pool reads, and unsigned publish, launch, and swap transaction builders. It does not expose migrate or claim builders. The server never asks for or holds a wallet's private key. It generates fresh config and mint account keypairs per transaction, partially signs with them, and returns transactions for an external wallet to sign. RPC overrides: `LAUNCHPROOF_RPC_DEVNET` and `LAUNCHPROOF_RPC_MAINNET`. Browser defaults use `VITE_RPC_DEVNET` and `VITE_RPC_MAINNET`; these values are public in the bundle.
 
 ## Repository map
 

@@ -3,7 +3,7 @@
  * `ConfigParameters`, without touching the chain.
  *
  * This mirrors `process_create_config` + `PoolConfig::init` in the DBC program. It lets the
- * simulator run on a design that has not been published yet. `test/parity.test.ts` checks
+ * simulator run on a design that has not been published yet. `test/differential.test.ts` checks
  * every field against the account the real program writes inside LiteSVM.
  */
 import BN from 'bn.js'

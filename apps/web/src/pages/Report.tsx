@@ -232,8 +232,8 @@ const SIGNALS = [
         test: (r: CensusRow) => r.audit!.unlockedLiquidityPct > 50,
     },
     {
-        title: 'leave over 5% of supply to one wallet',
-        tip: "Supply that is neither sold on the curve nor paired in the pool goes to the config's leftover receiver after the migration burn.",
+        title: 'are configured to leave over 5% of supply to the leftover receiver',
+        tip: "This is a configured estimate after curve sales, migration allocation, vesting and the migration burn. Actual pool balances and fees can differ.",
         color: 'var(--critical)',
         test: (r: CensusRow) => r.audit!.leftoverSupplyPct > 5,
     },
@@ -373,6 +373,9 @@ export function Report() {
                             <p className="mt-2 text-sm text-ink-2">
                                 Among {count(majorityUnlockedPools)} reviewed pools with majority LP initially unlocked, the creator side has the larger unlocked share in {count(creatorDominantPools)} ({percent(creatorDominantPools, majorityUnlockedPools)}), and the partner/launchpad side in {count(partnerDominantPools)} ({percent(partnerDominantPools, majorityUnlockedPools)}). Ties make up the remainder. For unmigrated pools, these terms would apply at migration.
                             </p>
+                            {data.residualReceivers && <p className="mt-2 text-sm text-ink-2">
+                                The leftover receiver is the config's own fee claimer in {(100 * data.residualReceivers.sameFeeClaimerShare).toFixed(2)}% of these pools ({count(data.residualReceivers.sameFeeClaimerPools)} of {count(data.residualReceivers.pools)}). This compares configured addresses, not observed withdrawals.
+                            </p>}
                             {data.mintAuthorities && <p className="mt-2 text-sm text-ink-2">
                                 Of {data.mintAuthorities.top.flaggedConfigs} flagged top configs, one base mint was checked per config: {data.mintAuthorities.top.set} still have a mint authority, {data.mintAuthorities.top.revoked} have it revoked, and {data.mintAuthorities.top.unavailable} were unavailable. An observed authority can authorize additional issuance; these samples do not establish the state of every pool using the config. The single-pool tail sample has {data.mintAuthorities.tail.set} set, {data.mintAuthorities.tail.revoked} revoked, and {data.mintAuthorities.tail.unavailable} unavailable among {data.mintAuthorities.tail.flaggedConfigs} flagged configs.
                             </p>}

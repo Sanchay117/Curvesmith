@@ -169,7 +169,7 @@ function printEvaluation(ev: Evaluation, scenarioId?: string) {
     console.log(`  fee               ${a.fee.startBps / 100}% -> ${fmt(a.fee.endBps / 100)}%${a.fee.decaySec ? ` over ${a.fee.decaySec}s` : ''}`)
     console.log(`  curve             ${a.segments} segments, ${ev.analyzed.spec.pricing.shape.kind}`)
     console.log('\n  review')
-    for (const f of ev.lint.findings) console.log(`   ${pad(`[${f.severity}]`, 11)}${f.title}`)
+    for (const f of ev.lint.findings.filter((finding) => finding.source !== 'simulation')) console.log(`   ${pad(`[${f.severity}]`, 11)}${f.title}`)
     const ids = scenarioId ? [scenarioId] : Object.keys(ev.runs)
     console.log('\n  simulation')
     for (const id of ids) {

@@ -105,6 +105,13 @@ function mintObservation(entry: MintEvidence, program: ReturnType<typeof createD
     return observation
 }
 
+function residualReceivers(rows: CensusRow[]) {
+    const residual = rows.filter((row) => row.audit && row.audit.leftoverSupplyPct > 5)
+    const pools = residual.reduce((sum, row) => sum + row.pools, 0)
+    const sameFeeClaimerPools = residual.filter((row) => row.audit!.leftoverReceiverIsFeeClaimer).reduce((sum, row) => sum + row.pools, 0)
+    return { thresholdPct: 5, pools, sameFeeClaimerPools, sameFeeClaimerShare: pools ? sameFeeClaimerPools / pools : 0 }
+}
+
 function mintSummary(rows: CensusRow[]) {
     const flagged = rows.filter((row) => row.audit?.mintAuthorityRetained)
     return {
@@ -329,6 +336,7 @@ export async function buildCensus(rpcUrl: string, network: Network, options: Cen
         duplicateObservations: duplicates, auditedConfigs: audited.length, auditedPools: audited.reduce((n, r) => n + r.pools, 0),
         failures: top.length - audited.length, validation: { checked, mismatches: 0 }, evidence, rows: top,
         operators,
+        residualReceivers: residualReceivers(top),
         mintAuthorities: { top: mintSummary(top), tail: mintSummary(tail) },
         tail: {
             populationConfigs: singletons.length, populationPools: singletons.length,
@@ -394,6 +402,7 @@ export function verifyCensus(reportPath: string, cachePath?: string) {
         const fields = readPoolCensusFields(bytes)
         if (fields.config !== decoded.poolState.config.toBase58() || fields.migrated !== (decoded.poolState.isMigrated === 1)) throw new Error('Sample decoding mismatch')
     }
+    if (report.residualReceivers && JSON.stringify(residualReceivers(report.rows)) !== JSON.stringify(report.residualReceivers)) throw new Error('Residual receiver summary differs')
     const observed = evidence.mintObservations ?? []
     if (new Set(observed.map((entry) => `${entry.scope}:${entry.config}`)).size !== observed.length) throw new Error('Duplicate mint observation')
     function verifyMintRows(rows: CensusRow[], scope: 'top' | 'tail') {

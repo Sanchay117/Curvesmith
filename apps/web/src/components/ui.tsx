@@ -305,7 +305,7 @@ export function GradeBadge({ grade, score, size = 'md' }: { grade: string; score
             >
                 {grade}
             </div>
-            {size === 'sm' && <span className="text-[10px] text-muted">design</span>}
+            {size === 'sm' && <span className="text-[10px] text-muted">design heuristic</span>}
             {size !== 'sm' && (
                 <div className="leading-tight">
                     <div className="tnum text-sm font-semibold">{score}/100</div>

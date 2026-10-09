@@ -95,7 +95,7 @@ export function Audit() {
                         </div>
                         <div>
                             <div className="text-lg font-semibold">{flagged.length ? `${flagged.length} ${flagged.length === 1 ? 'term' : 'terms'} to read before you buy` : 'No flagged terms'}</div>
-                            <div className="text-sm text-ink-2">{flagged.length ? flagged.map((f) => f.title).join(' · ') : 'No configured term tripped a finding.'} {audit.policy === 'launchproof/config-review@2' ? 'Eleven' : 'Seven'} term checks ran; this is not a safety certificate.</div>
+                            <div className="text-sm text-ink-2">{flagged.length ? `${flagged.map((f) => f.title).join(' · ')}.` : 'No configured term tripped a finding.'} {audit.policy === 'launchproof/config-review@2' ? 'Eleven' : 'Seven'} term checks ran; this is not a safety certificate.</div>
                         </div>
                     </div>
 

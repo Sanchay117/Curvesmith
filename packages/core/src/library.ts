@@ -38,7 +38,7 @@ export const LIBRARY: Record<string, PresetSpec> = {
         name: 'Long Curve',
         tagline: 'Weeks of price discovery for communities, not minutes',
         description:
-            'A 16-segment exponential curve over a 400x price range with a large raise, so graduation takes sustained demand. Low 0.6% fees and 80% of them go to the creator. After graduation the DAMM v2 fee starts at 2% and decays to 0.25% as market cap grows 10x. Creator LP vests over six months.',
+            'A 16-segment exponential curve over a 400x price range with a large raise, so graduation takes sustained demand. A 20% opening fee decays to 0.6%; 80% of the trading fees after the protocol share go to the creator. After graduation the DAMM v2 fee starts at 2% and decays to 0.25% as market cap grows 10x. Creator LP vests over six months.',
         category: 'community',
         tags: ['exponential', '16-segments', 'mcap-fee-scheduler', 'lp-vesting'],
         quote: 'SOL',
@@ -158,9 +158,9 @@ export const LIBRARY: Record<string, PresetSpec> = {
     'agent-treasury': {
         ...base,
         name: 'Agent Treasury',
-        tagline: 'Curve fees fund an AI agent\'s compute, forever',
+        tagline: 'DBC trading fees for an AI agent\'s treasury',
         description:
-            'Built for AI-agent tokens: 90% of curve trading fees and 100% of a 2% graduation fee go to the creator, which is the agent\'s own wallet. A linear curve keeps the agent\'s funding predictable. After graduation, the agent owns half of the LP (locked), so DAMM v2 trading fees keep paying for inference.',
+            'Built for AI-agent tokens: the creator receives 90% of DBC trading fees after the protocol share. The config also allocates a 2% migration fee to the creator and half of the migrated LP as permanently locked. Launchproof Earnings claims DBC trading fees only; migration fees and DAMM v2 income require separate tools.',
         category: 'ai',
         tags: ['creator-fees', 'migration-fee', 'linear'],
         quote: 'SOL',

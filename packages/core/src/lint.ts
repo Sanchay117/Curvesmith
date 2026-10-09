@@ -13,6 +13,7 @@ export type Severity = 'critical' | 'warning' | 'info' | 'good'
 export interface Finding {
     id: string
     severity: Severity
+    source?: 'simulation'
     title: string
     detail: string
 }
@@ -101,6 +102,7 @@ export function lintPreset(a: AnalyzedPreset, ctx: LintContext = {}): LintReport
             if (Math.abs(sn.roiPct) < 2) {
                 add({
                     id: 'sniper-roi',
+                    source: 'simulation',
                     severity: 'good',
                     title: 'No sniper edge',
                     detail: `Bots that buy in the first 3 seconds end up ${pct(sn.roiPct, 1)}: there is no cheap bottom to farm.`,
@@ -108,6 +110,7 @@ export function lintPreset(a: AnalyzedPreset, ctx: LintContext = {}): LintReport
             } else if (sn.roiPct > 50) {
                 add({
                     id: 'sniper-roi',
+                    source: 'simulation',
                     severity: 'warning',
                     title: `Snipers profit ${pct(sn.roiPct, 0)} in simulation`,
                     detail: `In the "Sniper rush" scenario, 15 bots that buy in the first 3 seconds and dump after 90s end up ${pct(sn.roiPct, 0)} up after paying ${fmt(sn.feesQuote)} ${spec.quote} in fees.`,
@@ -115,6 +118,7 @@ export function lintPreset(a: AnalyzedPreset, ctx: LintContext = {}): LintReport
             } else if (sn.roiPct < 0) {
                 add({
                     id: 'sniper-roi',
+                    source: 'simulation',
                     severity: 'good',
                     title: `Snipers lose ${pct(-sn.roiPct, 0)} in simulation`,
                     detail: `The fee schedule converts sniping into ${fmt(sn.feesQuote)} ${spec.quote} of fees for the author and creator.`,
@@ -233,16 +237,18 @@ export function lintPreset(a: AnalyzedPreset, ctx: LintContext = {}): LintReport
             const prog = r.timeline[r.timeline.length - 1]?.progress ?? 0
             add({
                 id: 'no-graduation',
+                source: 'simulation',
                 severity: 'info',
-                title: 'Does not graduate under organic demand',
-                detail: `The "${r.scenario.name}" scenario reaches ${pct(prog * 100, 0)} of the raise in ${fmt(r.scenario.horizonSec / 3600)}h. Expect a long curve.`,
+                title: 'Simulated crowd does not reach graduation',
+                detail: `The "${r.scenario.name}" scenario reaches ${pct(prog * 100, 0)} of the raise in ${fmt(r.scenario.horizonSec / 3600)}h. This scenario is not a demand forecast.`,
             })
         } else if (r.graduationSec !== null) {
             add({
                 id: 'graduation-time',
+                source: 'simulation',
                 severity: 'good',
-                title: `Graduates in ${fmt(r.graduationSec / 60)} minutes under organic demand`,
-                detail: `${fmt(r.volumeQuote)} ${spec.quote} of volume; ${fmt(r.fees.partner)} ${spec.quote} to the author and ${fmt(r.fees.creator)} ${spec.quote} to the creator before graduation.`,
+                title: `Simulated graduation in ${fmt(r.graduationSec / 60)} minutes`,
+                detail: `In the "${r.scenario.name}" simulation, ${fmt(r.volumeQuote)} ${spec.quote} of volume; ${fmt(r.fees.partner)} ${spec.quote} to the author and ${fmt(r.fees.creator)} ${spec.quote} to the creator before graduation.`,
             })
         }
     }

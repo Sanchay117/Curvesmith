@@ -4,14 +4,13 @@ For census methodology, limitations, and receipt verification, start with [CENSU
 
 Contents
 
-1. [Solana in ten minutes (only what this project uses)](#1-solana-in-ten-minutes)
-2. [Meteora DBC: how a bonding-curve launch works](#2-meteora-dbc)
-3. [The idea, and why this one](#3-the-idea-and-why-this-one)
-4. [Architecture at a glance](#4-architecture-at-a-glance)
-5. [Deep dives](#5-deep-dives)
-6. [Trade-offs, all in one place](#6-trade-offs)
-7. [Where everything is](#7-where-everything-is)
-8. [Running, testing, demoing, submitting](#8-running-testing-demoing-submitting)
+1. [Solana in ten minutes](#1-solana-in-ten-minutes)
+2. [Meteora DBC](#2-meteora-dbc)
+3. [Architecture at a glance](#3-architecture-at-a-glance)
+4. [Deep dives](#4-deep-dives)
+5. [Trade-offs](#5-trade-offs)
+6. [Where everything is](#6-where-everything-is)
+7. [Running, testing, and demoing](#7-running-testing-and-demoing)
 
 ---
 
@@ -21,7 +20,7 @@ Contents
 
 **Programs.** Smart contracts. They are stateless code; all state lives in accounts passed into each call. Meteora's DBC is one program (`dbcij3LW...`); its DAMM v2 AMM is another (`cpamdpZC...`).
 
-**Transactions and instructions.** A transaction is a list of *instructions* (program + accounts + data) that execute atomically, signed by the required keys. Size limit: **1232 bytes**. Compute limit: 200k compute units (CU) per instruction by default, up to 1.4M per transaction if you ask with a `ComputeBudget` instruction. (Launchproof hit both limits; see 5.8.)
+**Transactions and instructions.** A transaction is a list of *instructions* (program + accounts + data) that execute atomically, signed by the required keys. Size limit: **1232 bytes**. Compute limit: 200k compute units (CU) per instruction by default, up to 1.4M per transaction if you ask with a `ComputeBudget` instruction. (Launchproof hit both limits; see 4.8.)
 
 **Signers.** Any account marked as a signer must sign. New accounts created at a fresh address (a DBC config, a token mint) need that address's keypair to sign once, which is why the app generates a keypair, *partially signs* with it, and then asks the wallet to sign too.
 
@@ -81,7 +80,7 @@ quote paid for them            = L * (sqrtP_high - sqrtP_low)
 
 ## 4. Deep dives
 
-### 5.1 The curve compiler (`packages/core/src/curve.ts`)
+### 4.1 The curve compiler (`packages/core/src/curve.ts`)
 
 Designers think in "price as a function of how much of the sale is done", `P(x)` for `x` from 0 to 1. DBC thinks in segments. The compiler bridges them:
 
@@ -98,11 +97,11 @@ Two properties fall out:
 
 Edge case found during testing: at very small prices (the 2 SOL Speedrun preset) Q64.64 rounding exceeds the SDK's tolerance, which it absorbs into a "leftover" allocation. `compilePreset` grows the leftover 10x at a time (up to 0.1% of supply) until the SDK accepts it.
 
-### 5.2 Deriving the on-chain config (`onchain.ts`)
+### 4.2 Deriving the on-chain config (`onchain.ts`)
 
 The simulator needs the exact `PoolConfig` account the program would write, including fields the program computes itself (migration sqrt price, swap base amount, graduation base amount). `deriveConfigState` mirrors `process_create_config` and `PoolConfig::init` from the Rust program. The differential test compares every field against the account the real program writes. It caught one bug: the program rounds the post-fee migration amount **up**, not down.
 
-### 5.3 The simulator (`sim/pool.ts`)
+### 4.3 The simulator (`sim/pool.ts`)
 
 `SimPool` holds a pool state shaped exactly like the decoded on-chain account. For each swap it:
 
@@ -114,34 +113,34 @@ The simulator needs the exact `PoolConfig` account the program would write, incl
 
 **Decision: port only the state transition, not the math.** The quote math is subtle (rounding direction everywhere, fee-inclusive vs exclusive amounts, partial fills) and the SDK already mirrors it. Porting ~60 lines of state updates is a much smaller surface to get right than reimplementing the whole swap.
 
-### 5.4 Proving it with LiteSVM (`packages/core/test`)
+### 4.4 Proving it with LiteSVM (`packages/core/test`)
 
 LiteSVM is a Solana virtual machine you can run inside a Node test, no validator required. The harness (`test/svm.ts`) loads Meteora's real program binaries (`.so` files from their SDK repo) and exposes them through a `Connection` subclass, so the unmodified Meteora SDK builds transactions against it as if it were devnet.
 
 - `differential.test.ts`: config parity for five very different presets, then 60 seeded random swaps on both the simulator and the real program, comparing the full state after every swap. Plus a dynamic-supply parity test for other launchpads' configs.
-- `lifecycle.test.ts`: the whole journey, including a real DAMM v2 migration. DAMM v2 needs config accounts that only Meteora's admin can create, so the test clones them from devnet (`test/fixtures/accounts`). Migration also needs the DBC pool authority to hold SOL for "flash rent" (it lends rent to the new DAMM accounts and is repaid in the same instruction); the test funds it, as Meteora does on devnet and mainnet.
+- `lifecycle.test.ts`: the whole journey, including a real DAMM v2 migration. DAMM v2 needs config accounts that only Meteora's admin can create, so the test clones them from devnet (`test/fixtures/accounts`). Migration also needs the DBC pool authority to hold SOL for "flash rent" (it lends rent to the new DAMM accounts and is repaid in the same instruction); the test funds it, as observed on the devnet deployment.
 
-**Why this matters.** "Our simulator says snipers lose 47%" is only worth something if the simulator is right. Differential testing against the actual binary is the strongest evidence possible short of mainnet, it runs in three seconds, and it found real bugs (5.2, 5.6).
+**Why this matters.** "Our simulator says snipers lose 47%" is only worth something if the simulator is right. Differential testing against the actual binary is the strongest evidence possible short of mainnet, it runs in three seconds, and it found real bugs (4.2, 4.6).
 
-### 5.5 Scenarios (`sim/scenario.ts`, `sim/scenarios.ts`)
+### 4.5 Scenarios (`sim/scenario.ts`, `sim/scenarios.ts`)
 
 Agents: a creator first buy (bundled with launch, so it can pay the minimum fee), snipers that buy in the first seconds and dump later, a Poisson-arrival crowd with log-normal trade sizes and some profit taking, a whale, and a panic where everyone sells half.
 
 **Decision: trade sizes are fractions of the raise.** That makes one scenario meaningful for an 86 SOL meme curve and a 7M USDC equity raise alike, so presets are comparable under identical market behaviour. **Decision: seeded randomness** (`mulberry32`): the same preset, scenario and seed always produce the same trades, so results are reproducible and shareable.
 
-### 5.6 Analysis and lint (`analysis.ts`, `lint.ts`)
+### 4.6 Analysis and lint (`analysis.ts`, `lint.ts`)
 
 Analysis reads the compiled config back: raise, market caps, supply split (sold on curve / paired in LP / creator allocation / leftover), average buyer multiple at graduation, opening price impact, graduated-pool impact for a 1 SOL or 1,000 USDC trade, fee schedule.
 
 Lint has two layers: the SDK's own `validateConfigParameters` (what the chain would reject) and economic findings backed by numbers and simulation. Severities map to a 0-100 design heuristic (critical -40, warning -12, info -4) and a grade, not a safety certificate. The **leftover-supply** rule was added after auditing a live mainnet config that leaves 90% of its supply to the leftover receiver; that audit also exposed a supply-estimation bug for dynamic-supply configs, now fixed and covered by a test.
 
-### 5.7 The CSR-1 registry (`registry.ts`, `docs/CSR-1.md`)
+### 4.7 The CSR-1 registry (`registry.ts`, `docs/CSR-1.md`)
 
 How do you build a marketplace without a server or a new program? Each listing is a memo transaction that also sends 0 lamports to a keyless address, so `getSignaturesForAddress(registry)` enumerates all listings (the Solana Pay "reference" trick). The trust rule: a listing counts only if its signer is the config's fee claimer, and economics are always read from the config account, never the memo. Full rationale and alternatives are in `docs/CSR-1.md`.
 
-### 5.8 Transactions (`chain.ts`, `apps/web/src/lib/tx.ts`)
+### 4.8 Transactions (`chain.ts`, `apps/web/src/lib/tx.ts`)
 
-Every builder returns unsigned transactions plus any fresh keypairs that must co-sign, so the same code works for a browser wallet, the CLI's file keypair, and the MCP server (which never sees keys and returns base64 transactions instead).
+Every builder returns unsigned transactions plus any fresh keypairs that must co-sign, so the same code works for a browser wallet, the CLI's file keypair, and the MCP server (which never asks for or holds a wallet's private key, generates fresh account keypairs per transaction, and returns partially signed base64 transactions).
 
 Lessons from real runs:
 - **Compute budget**: SPL Memo spends about 380 CU per byte (it logs the memo). A 700-byte listing exceeded the default 200k and failed on devnet, so listings now request `40k + 420 * bytes` CU.
@@ -149,7 +148,7 @@ Lessons from real runs:
 - **One wallet prompt for multi-step flows**: publishing signs both transactions with `signAllTransactions`, then sends them in order, waiting for confirmation in between.
 - **Partial fill for buys**: the last buy before graduation would overshoot the threshold; `swap2` with `PartialFill` stops exactly at the graduation price and refunds the rest.
 
-### 5.9 The web app (`apps/web`)
+### 4.9 The web app (`apps/web`)
 
 - **Vite + React + TypeScript + Tailwind v4.** Fast dev loop, small config.
 - **Hash routing** (`/#/studio`) so the static build works on any host without server rewrites.
@@ -161,7 +160,7 @@ Lessons from real runs:
 - **Devnet Burner wallet** (`src/lib/burner.ts`): a small wallet-adapter implementation with its key in localStorage, offered only on devnet, so anyone can try every flow without installing or configuring a wallet extension.
 - **Registry snapshot** (`launchproof snapshot`, `src/lib/queries.ts`): the build ships a static copy of the registry and preset stats. Pages paint from it instantly, then live chain data replaces it (stale-while-revalidate); if the live read fails after retries, the snapshot stays on screen instead of an error. Config accounts are stored as raw bytes and decoded with the DBC program's own coder, so the snapshot cannot drift from the real account layout.
 
-### 5.10 What testing against the real chain taught us
+### 4.10 What testing against the real chain taught us
 
 Unit tests and the LiteSVM suite proved the math. Clicking through the app against public devnet found a different class of bug: how a real app behaves when the network is slow, out of order or rate limited. Each one is worth knowing as a general lesson.
 
