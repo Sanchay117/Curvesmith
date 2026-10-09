@@ -456,7 +456,7 @@ export function Report() {
                                 <div>
                                     <div className="font-semibold">How this was measured</div>
                                     <div className="mt-0.5 text-xs text-muted">
-                                        Mainnet, finalized, {new Date(data.observedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}. Reproducible from the CLI.
+                                        Mainnet, finalized. Latest supporting read: {new Date(data.observedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}. Reproducible from the CLI.
                                     </div>
                                 </div>
                                 <span className="text-muted transition-transform group-open:rotate-180">⌄</span>
@@ -466,14 +466,19 @@ export function Report() {
                                     <h3 className="font-semibold text-ink">What was counted</h3>
                                     <p className="mt-2">{data.scope}</p>
                                     <p className="mt-2">
-                                        Slots {data.slots.slice(0, 2).join(' to ')}. {data.duplicateObservations} repeated observations removed.
+                                        Pool-scan slots {data.slots.slice(0, 2).join(' to ')}. {data.duplicateObservations} repeated observations removed.
                                     </p>
                                 </div>
+                                {data.phases && <div className="space-y-2">
+                                    <h3 className="font-semibold text-ink">Collection windows (UTC)</h3>
+                                    {Object.entries(data.phases).map(([key, phase]) => <p key={key}>
+                                        {{ poolScan: 'Pool scan', operators: 'Fee-claimer scan', tailReads: 'Tail reads', topReads: 'Top config and quote reads', decodeValidation: 'Decode validation', mintAuthorities: 'Base mint observations' }[key] ?? key}: {phase.firstObservedAt.replace('T', ' ').replace('Z', ' UTC')} to {phase.lastObservedAt.replace('T', ' ').replace('Z', ' UTC')}. Slots {phase.minSlot} to {phase.maxSlot}. {phase.estimatedTimes ? 'Times estimated from cache file modification times; original fetch timestamps were not recorded.' : 'Recorded fetch times.'}
+                                    </p>)}
+                                </div>}
                                 <div>
                                     <h3 className="font-semibold text-ink">What was checked</h3>
                                     <p className="mt-2">
-                                        Top {count(data.rows.length)} configs, {data.failures} not evaluated. {data.validation.checked} sampled pool accounts matched the SDK {data.sdkVersion} decoder with{' '}
-                                        {data.validation.mismatches} mismatches. Migration is a program flag, not proof of demand, and no safety grade is assigned.
+                                        Top {count(data.rows.length)} configs, {data.failures} not evaluated. Decode check: all {data.validation.checked} sampled pool accounts matched SDK {data.sdkVersion}; a mismatch aborts the run. Migration is a program flag, not proof of demand, and no safety grade is assigned.
                                     </p>
                                 </div>
                             </div>

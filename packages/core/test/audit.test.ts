@@ -4,7 +4,7 @@ import { Connection, PublicKey } from '@solana/web3.js'
 import { createDbcProgram, PoolConfig } from '@meteora-ag/dynamic-bonding-curve-sdk'
 import BN from 'bn.js'
 import { MintLayout, TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token'
-import { analyzePreset, auditConfig, readMintAuthority, compilePreset, countPoolObservations, defaultPreset, deriveConfigState, lintPreset, QUOTE_ASSETS, readPoolCensusFields, residualSupply, specFromConfig } from '../src'
+import { analyzePreset, auditConfig, readMintAuthority, censusPhases, compilePreset, countPoolObservations, defaultPreset, deriveConfigState, lintPreset, QUOTE_ASSETS, readPoolCensusFields, residualSupply, specFromConfig } from '../src'
 
 function config() {
     return deriveConfigState(compilePreset(defaultPreset()).params, {
@@ -197,5 +197,23 @@ describe('observed mint authority', () => {
         }
         expect(() => readMintAuthority(PublicKey.default, { owner: PublicKey.default, data, lamports: 1, executable: false })).toThrow('Invalid mint owner')
         expect(() => readMintAuthority(PublicKey.default, { owner: TOKEN_PROGRAM_ID, data: Buffer.alloc(0), lamports: 1, executable: false })).toThrow()
+    })
+})
+
+describe('census collection windows', () => {
+    test('keeps pool, tail and mint windows separate and rejects invalid metadata', () => {
+        const observations = [
+            { timeSource: 'cache-mtime' as const, file: 'pool-scan-0.json.gz', slot: 1, fetchedAt: '2026-10-08T00:00:00Z' },
+            { timeSource: 'cache-mtime' as const, file: 'pool-scan-1.json.gz', slot: 2, fetchedAt: '2026-10-08T00:01:00Z' },
+            { timeSource: 'recorded-fetch' as const, file: 'tail-configs-0.json.gz', slot: 10, fetchedAt: '2026-10-08T06:30:00Z' },
+            { timeSource: 'recorded-fetch' as const, file: 'authority-top-mints-0.json.gz', slot: 20, fetchedAt: '2026-10-09T00:00:00Z' },
+        ]
+        const phases = censusPhases(observations)
+        expect(phases.poolScan).toEqual({ firstObservedAt: observations[0].fetchedAt, lastObservedAt: observations[1].fetchedAt, minSlot: 1, maxSlot: 2, requests: 2, estimatedTimes: true })
+        expect(phases.tailReads.firstObservedAt).toBe(observations[2].fetchedAt)
+        expect(phases.mintAuthorities.minSlot).toBe(20)
+        expect(() => censusPhases([...observations, observations[0]])).toThrow('Duplicate')
+        expect(() => censusPhases([{ ...observations[0], fetchedAt: 'invalid' }])).toThrow('Invalid')
+        expect(() => censusPhases([{ ...observations[0], slot: -1 }])).toThrow('Invalid')
     })
 })

@@ -7,7 +7,7 @@ import { Connection, PublicKey } from '@solana/web3.js'
 import { unpackMint, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from '@solana/spl-token'
 import { createDbcProgram, PoolConfig, VirtualPool } from '@meteora-ag/dynamic-bonding-curve-sdk'
 import {
-    readMintAuthority, preserveRecordedMintWording, MintAuthorityObservation,
+    censusPhases, CensusObservation, readMintAuthority, preserveRecordedMintWording, MintAuthorityObservation,
     auditConfig, auditConfigV1, AUDIT_POLICY_V1, CensusReport, CensusRow, countPoolObservations, DBC_PROGRAM_ID,
     Network, POOL_CONFIG_OFFSET, POOL_MIGRATED_OFFSET, readPoolCensusFields, VIRTUAL_POOL_DISCRIMINATOR,
 } from '@launchproof/core'
@@ -141,6 +141,7 @@ export async function buildCensus(rpcUrl: string, network: Network, options: Cen
     const evidence: CensusReport['evidence'] = []
     const slots: number[] = []
     const observationTimes: number[] = []
+    const phaseObservations: CensusObservation[] = []
     async function request<T>(name: string, method: string, params: unknown[]): Promise<RpcResult<T>> {
         const file = path.join(cache, `${name}.json.gz`)
         let packed: Buffer
@@ -175,7 +176,8 @@ export async function buildCensus(rpcUrl: string, network: Network, options: Cen
         const result = saved.result as RpcResult<T>
         if (!Number.isInteger(result.context?.slot) || !Array.isArray(result.value)) throw new Error(`Invalid RPC response: ${name}`)
         if (method === 'getMultipleAccounts' && result.value.length !== (params[0] as string[]).length) throw new Error(`Incomplete batch: ${name}`)
-        result.fetchedAt = saved.fetchedAt
+        result.fetchedAt = saved.fetchedAt ?? fs.statSync(file).mtime.toISOString()
+        phaseObservations.push({ file: path.basename(file), slot: result.context.slot, fetchedAt: result.fetchedAt, timeSource: saved.fetchedAt ? 'recorded-fetch' : 'cache-mtime' })
         slots.push(result.context.slot)
         return result
     }
@@ -331,10 +333,10 @@ export async function buildCensus(rpcUrl: string, network: Network, options: Cen
     const audited = top.filter((r) => r.audit)
     const report: CensusReport = {
         schema: 'launchproof/census@1', generatedAt: new Date().toISOString(), observedAt: new Date(Math.max(...observationTimes)).toISOString(), network, programId: DBC_PROGRAM_ID.toBase58(),
-        sdkVersion, source, commitment: 'finalized', slots, pools: poolCount, migrated: migratedCount, configs: rows.length,
+        sdkVersion, source, commitment: 'finalized', slots, phases: censusPhases(phaseObservations), pools: poolCount, migrated: migratedCount, configs: rows.length,
         scope: 'Existing standard VirtualPool accounts observed across two finalized scans. Excludes transfer-hook pools and closed accounts. This is an observation window, not a historical launch count or a single-slot snapshot. Migration is a program flag, not evidence of users, demand, volume, or misconduct.',
         duplicateObservations: duplicates, auditedConfigs: audited.length, auditedPools: audited.reduce((n, r) => n + r.pools, 0),
-        failures: top.length - audited.length, validation: { checked, mismatches: 0 }, evidence, rows: top,
+        failures: top.length - audited.length, validation: { checked, abortOnMismatch: true }, evidence, rows: top,
         operators,
         residualReceivers: residualReceivers(top),
         mintAuthorities: { top: mintSummary(top), tail: mintSummary(tail) },
@@ -346,7 +348,7 @@ export async function buildCensus(rpcUrl: string, network: Network, options: Cen
     }
     fs.mkdirSync(path.dirname(options.out), { recursive: true })
     const publicEvidence = options.out.replace(/\.json$/, '') + '-evidence.json.gz'
-    fs.writeFileSync(publicEvidence, gzipSync(JSON.stringify({ schema: 'launchproof/census-evidence@1', configs, samples, mints: mintEvidence, tail: tailEntries, mintObservations })))
+    fs.writeFileSync(publicEvidence, gzipSync(JSON.stringify({ schema: 'launchproof/census-evidence@1', configs, samples, mints: mintEvidence, tail: tailEntries, mintObservations, observations: phaseObservations })))
     report.evidence.push({ file: path.basename(publicEvidence), sha256: hash(fs.readFileSync(publicEvidence)) })
     fs.writeFileSync(`${options.out}.tmp`, JSON.stringify(report))
     fs.renameSync(`${options.out}.tmp`, options.out)
@@ -365,8 +367,23 @@ export function verifyCensus(reportPath: string, cachePath?: string) {
     const evidence = JSON.parse(gunzipSync(packed).toString()) as {
         configs: Array<{ address: string; data: string }>; samples: Array<{ address: string; data: string }>;
         mints: Array<{ address: string; data: string; owner: string }>;
+        observations?: CensusObservation[];
         mintObservations?: MintEvidence[];
         tail?: Array<{ address: string; data?: string; slot?: number; error?: string }>;
+    }
+    if (report.phases) {
+        if (!evidence.observations || JSON.stringify(censusPhases(evidence.observations)) !== JSON.stringify(report.phases)) throw new Error('Phase summary differs')
+        const expectedFiles = report.evidence.filter((entry) => entry.file !== path.basename(evidenceFile)).map((entry) => entry.file).sort()
+        if (JSON.stringify(evidence.observations.map((entry) => entry.file).sort()) !== JSON.stringify(expectedFiles)) throw new Error('Phase evidence coverage differs')
+        if (JSON.stringify(evidence.observations.map((entry) => entry.slot)) !== JSON.stringify(report.slots)) throw new Error('Observation slots differ')
+        if (new Date(Math.max(...evidence.observations.map((entry) => Date.parse(entry.fetchedAt)))).toISOString() !== report.observedAt) throw new Error('Observation endpoint differs')
+        if (cachePath) for (const observation of evidence.observations) {
+            const savedBytes = fs.readFileSync(path.join(cachePath, observation.file))
+            if (hash(savedBytes) !== report.evidence.find((entry) => entry.file === observation.file)?.sha256) throw new Error(`Phase archive hash differs: ${observation.file}`)
+            const saved = JSON.parse(gunzipSync(savedBytes).toString())
+            const recordedTime = saved.fetchedAt ?? fs.statSync(path.join(cachePath, observation.file)).mtime.toISOString()
+            if ((saved.fetchedAt ? 'recorded-fetch' : 'cache-mtime') !== observation.timeSource || recordedTime !== observation.fetchedAt || saved.result.context.slot !== observation.slot) throw new Error(`Phase metadata differs: ${observation.file}`)
+        }
     }
     const { program } = createDbcProgram(new Connection('http://localhost:8899'))
     const mints = new Map(evidence.mints.map((m) => [m.address, m]))
@@ -461,6 +478,7 @@ export function verifyCensus(reportPath: string, cachePath?: string) {
         const scan = JSON.parse(gunzipSync(packedScan).toString()) as { result: RpcResult<PoolRecord[]> }
         if (JSON.stringify(summarizeOperators(counts, scan.result.value)) !== JSON.stringify(report.operators)) throw new Error('Operator aggregates differ')
     }
+    if (report.validation.mismatches !== undefined && report.validation.mismatches !== 0) throw new Error('Published decode mismatch')
     if (verified !== report.auditedConfigs || evidence.samples.length !== report.validation.checked) throw new Error('Verification counts differ')
     console.log(`Verified ${verified} top config reviews, ${report.tail?.evaluated ?? 0} sampled tail reviews, ${evidence.samples.length} pool layouts${report.operators && cachePath ? ', and fee-claimer aggregates' : ''}. Full-network totals require replaying the raw scan archive; chain inclusion is not proven.`)
 }

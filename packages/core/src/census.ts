@@ -35,6 +35,51 @@ export interface CensusRow {
     mintObservation?: MintAuthorityObservation
 }
 
+export interface CensusObservation {
+    file: string
+    slot: number
+    fetchedAt: string
+    timeSource: 'recorded-fetch' | 'cache-mtime'
+}
+
+export interface CensusPhase {
+    firstObservedAt: string
+    lastObservedAt: string
+    minSlot: number
+    maxSlot: number
+    requests: number
+    estimatedTimes: boolean
+}
+
+/** Collection times belong to RPC phases, not to a single atomic snapshot. */
+export function censusPhases(observations: CensusObservation[]): Record<string, CensusPhase> {
+    const phases: Record<string, CensusPhase> = {}
+    const files = new Set<string>()
+    for (const observation of observations) {
+        const { file, slot, fetchedAt } = observation
+        if (files.has(file)) throw new Error('Duplicate phase evidence')
+        files.add(file)
+        if (!Number.isSafeInteger(slot) || slot < 0 || !Number.isFinite(Date.parse(fetchedAt))) throw new Error('Invalid phase metadata')
+        const phase = file.startsWith('pool-scan-') ? 'poolScan'
+            : file === 'config-operators.json.gz' ? 'operators'
+                : file.startsWith('validation-') ? 'decodeValidation'
+                    : file.startsWith('tail-') ? 'tailReads'
+                        : file.startsWith('authority-') ? 'mintAuthorities'
+                            : /^(configs|mints)-/.test(file) ? 'topReads' : null
+        if (!phase) throw new Error(`Unknown census phase: ${file}`)
+        const current = phases[phase] ?? { firstObservedAt: fetchedAt, lastObservedAt: fetchedAt, minSlot: slot, maxSlot: slot, requests: 0, estimatedTimes: false }
+        if (Date.parse(fetchedAt) < Date.parse(current.firstObservedAt)) current.firstObservedAt = fetchedAt
+        if (Date.parse(fetchedAt) > Date.parse(current.lastObservedAt)) current.lastObservedAt = fetchedAt
+        current.minSlot = Math.min(current.minSlot, slot)
+        current.maxSlot = Math.max(current.maxSlot, slot)
+        if (!['recorded-fetch', 'cache-mtime'].includes(observation.timeSource)) throw new Error('Invalid phase time source')
+        current.estimatedTimes ||= observation.timeSource === 'cache-mtime'
+        current.requests++
+        phases[phase] = current
+    }
+    return phases
+}
+
 export interface CensusReport {
     schema: 'launchproof/census@1'
     generatedAt: string
@@ -45,6 +90,7 @@ export interface CensusReport {
     source: string
     commitment: 'finalized'
     slots: number[]
+    phases?: Record<string, CensusPhase>
     scope: string
     pools: number
     migrated: number
@@ -53,7 +99,7 @@ export interface CensusReport {
     auditedConfigs: number
     auditedPools: number
     failures: number
-    validation: { checked: number; mismatches: number }
+    validation: { checked: number; abortOnMismatch?: true; mismatches?: number }
     residualReceivers?: { thresholdPct: number; pools: number; sameFeeClaimerPools: number; sameFeeClaimerShare: number }
     mintAuthorities?: {
         top: { flaggedConfigs: number; set: number; revoked: number; unavailable: number }

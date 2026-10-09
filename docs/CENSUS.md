@@ -20,6 +20,14 @@ Two scans plus validation and config reads can take several minutes and download
 
 The 2026-10-09 mint observations found authorities set on 27 of 31 sampled top-config mints and revoked on 4. Among 20 flagged single-pool tail configs, 18 were set and 2 revoked. All 51 reads succeeded. These counts are sampled mints, not pool-weighted estimates; the legacy top flags cover 6,455 observed pools. The predicates and severities remain policy 2, with corrected explanatory text. Exact older receipt wording still verifies.
 
+## Collection windows
+
+The published pool scans span slots **454503193–454503628**. Their cache-file timestamps estimate **2026-10-08 09:24:43–09:26:40 UTC**; those early files did not record fetch times. Top config/quote and decode-validation times are also cache-file estimates. Copying the archive can change file timestamps, so preserve modification times when reproducing these estimates.
+
+The tail reads have recorded fetch times **2026-10-08 13:43:52–13:43:58 UTC** (slots 454561639–454561666). The fee-claimer scan was fetched at **13:47:42 UTC**, slot 454562403. Base-mint observations were fetched **2026-10-09 06:46:07 UTC**, slots 454789632–454789635. These are separate observation windows. `observedAt` is only the latest supporting read.
+
+The JSON `phases` summarizes each phase's slot range, time range, request count and whether times are estimated. The evidence archive retains per-request metadata; `verify-census --cache` checks raw archive hashes and metadata as well as the summaries. The decoder check means **all 200 samples matched; a mismatch aborts publication**, not an independently accumulated mismatch count.
+
 ## Review policy: `launchproof/config-review@2`
 
 | Check | Rule | Interpretation |
