@@ -8,8 +8,8 @@
  *    volatility tracker must be identical to the lamport.
  */
 import { describe, expect, test } from 'vitest'
-import { Keypair, PublicKey } from '@solana/web3.js'
-import { getAssociatedTokenAddressSync, NATIVE_MINT, TOKEN_PROGRAM_ID } from '@solana/spl-token'
+import { Keypair, PublicKey, Transaction } from '@solana/web3.js'
+import { createAssociatedTokenAccountInstruction, createMintToInstruction, getAssociatedTokenAddressSync, NATIVE_MINT, TOKEN_PROGRAM_ID } from '@solana/spl-token'
 import BN from 'bn.js'
 import {
     deriveDbcPoolAddress,
@@ -91,10 +91,11 @@ function variants(): Array<[string, PresetSpec]> {
 }
 
 /** The program reads USDC's mint account, so clone a minimal 6-decimal SPL mint into the SVM. */
-function installUsdcLikeMint(env: Svm, mint: PublicKey) {
+function installUsdcLikeMint(env: Svm, mint: PublicKey, authority: PublicKey) {
     const data = new Uint8Array(82)
     const view = new DataView(data.buffer)
-    view.setUint32(0, 0, true) // no mint authority
+    view.setUint32(0, 1, true) // local fixture authority funds trader token accounts
+    data.set(authority.toBytes(), 4)
     view.setBigUint64(36, 0n, true) // supply
     data[44] = 6 // decimals
     data[45] = 1 // initialized
@@ -158,7 +159,7 @@ describe('differential: Launchproof model vs real DBC program (LiteSVM)', () => 
             let quoteMint = NATIVE_MINT
             if (spec.quote === 'USDC') {
                 quoteMint = Keypair.generate().publicKey
-                installUsdcLikeMint(env, quoteMint)
+                installUsdcLikeMint(env, quoteMint, partner.publicKey)
             }
 
             const { params } = compilePreset(spec)
@@ -180,8 +181,6 @@ describe('differential: Launchproof model vs real DBC program (LiteSVM)', () => 
                 leftoverReceiver: partner.publicKey,
             })
             expect(norm(derived)).toEqual(norm(onchain))
-
-            if (spec.quote === 'USDC') return // buying needs funded USDC accounts; parity is the point here
 
             const baseMint = Keypair.generate()
             const poolTx = await client.creator.createPool({
@@ -208,6 +207,17 @@ describe('differential: Launchproof model vs real DBC program (LiteSVM)', () => 
             const traders = Array.from({ length: 4 }, () => env.funded(10_000))
             const holdings = traders.map(() => new BN(0))
             const threshold = onchain.migrationQuoteThreshold
+            if (spec.quote === 'USDC') {
+                for (const trader of traders) {
+                    const ata = getAssociatedTokenAddressSync(quoteMint, trader.publicKey)
+                    env.send(new Transaction().add(
+                        createAssociatedTokenAccountInstruction(partner.publicKey, ata, trader.publicKey, quoteMint),
+                        createMintToInstruction(quoteMint, ata, partner.publicKey, BigInt(threshold.muln(10).toString())),
+                    ), [partner])
+                }
+            }
+            let replayedBuys = 0
+            let replayedSells = 0
 
             for (let step = 0; step < 60 && !sim.isComplete(); step++) {
                 env.advance(Math.floor(rng() * 25))
@@ -238,6 +248,8 @@ describe('differential: Launchproof model vs real DBC program (LiteSVM)', () => 
                     minimumAmountOut: new BN(0),
                 })
                 env.send(swapTx, [traders[i]])
+                if (sell) replayedSells++
+                else replayedBuys++
 
                 holdings[i] = sell ? holdings[i].sub(amountIn) : holdings[i].add(simTrade.amountOut)
 
@@ -267,6 +279,8 @@ describe('differential: Launchproof model vs real DBC program (LiteSVM)', () => 
                     expect(bal.toString()).toEqual(holdings[i].toString())
                 }
             }
+            expect(replayedBuys).toBeGreaterThan(0)
+            expect(replayedSells).toBeGreaterThan(0)
         })
     }
 })

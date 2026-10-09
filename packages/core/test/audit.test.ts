@@ -4,7 +4,7 @@ import { Connection, PublicKey } from '@solana/web3.js'
 import { createDbcProgram, PoolConfig } from '@meteora-ag/dynamic-bonding-curve-sdk'
 import BN from 'bn.js'
 import { MintLayout, TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token'
-import { analyzePreset, auditConfig, readMintAuthority, censusPhases, compilePreset, countPoolObservations, defaultPreset, deriveConfigState, lintPreset, QUOTE_ASSETS, readPoolCensusFields, residualSupply, specFromConfig } from '../src'
+import { sha256, toHex, analyzePreset, auditConfig, readMintAuthority, censusPhases, compilePreset, countPoolObservations, defaultPreset, deriveConfigState, lintPreset, QUOTE_ASSETS, readPoolCensusFields, residualSupply, specFromConfig } from '../src'
 
 function config() {
     return deriveConfigState(compilePreset(defaultPreset()).params, {
@@ -215,5 +215,16 @@ describe('census collection windows', () => {
         expect(() => censusPhases([...observations, observations[0]])).toThrow('Duplicate')
         expect(() => censusPhases([{ ...observations[0], fetchedAt: 'invalid' }])).toThrow('Invalid')
         expect(() => censusPhases([{ ...observations[0], slot: -1 }])).toThrow('Invalid')
+    })
+})
+
+describe('mainnet audit golden configs', () => {
+    const fixtures = JSON.parse(readFileSync(new URL('./fixtures/mainnet-audit-golden.json', import.meta.url), 'utf8')) as Array<{ address: string; data: string; sha256: string; expectedFindings: unknown[] }>
+    const { program } = createDbcProgram(new Connection('http://localhost:8899'))
+    for (const fixture of fixtures) test(fixture.address, () => {
+        const bytes = Buffer.from(fixture.data, 'base64')
+        expect(toHex(sha256(bytes))).toBe(fixture.sha256)
+        const config = program.coder.accounts.decode('poolConfig', bytes) as PoolConfig
+        expect(auditConfig(config, 'mainnet-beta').findings).toEqual(fixture.expectedFindings)
     })
 })

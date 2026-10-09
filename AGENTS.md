@@ -26,7 +26,7 @@ Use strict TypeScript and ES modules: four-space indentation, single quotes, no 
 
 ## Testing Guidelines
 
-Put `*.test.ts` files in `packages/core/test/`. Add regression cases for audit rules and seeded differential or migration behavior. Vitest and LiteSVM tests use local fixtures without network access. Keep tests sequential. CI runs on macOS due to a LiteSVM Linux crash; no coverage threshold is set.
+Put `*.test.ts` files in `packages/core/test/`. Cover audit rules with golden mainnet fixtures; replay SOL/USDC swaps and assert exact claims. Vitest and LiteSVM tests use local fixtures without network access. Keep tests sequential. CI runs on macOS due to a LiteSVM Linux crash; no coverage threshold is set.
 
 ## Commit & Pull Request Guidelines
 

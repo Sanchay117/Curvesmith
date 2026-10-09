@@ -19,6 +19,8 @@ import {
     deriveDbcPoolAddress,
     DynamicBondingCurveClient,
     getPriceFromSqrtPrice,
+    getFeeMode,
+    TradeDirection,
     PoolConfig,
     SwapMode,
     VirtualPool,
@@ -175,6 +177,21 @@ export async function chainTime(connection: Connection): Promise<{ unix: number;
     const slot = await connection.getSlot('confirmed')
     const unix = (await connection.getBlockTime(slot).catch(() => null)) ?? Math.floor(Date.now() / 1000)
     return { unix, slot }
+}
+
+/** Human-unit quote fields, including the actual fee asset selected by the SDK. */
+export function formatSwapQuote(snap: PoolSnapshot, side: 'buy' | 'sell', result: ReturnType<typeof quoteSwap>, quoteDecimals: number) {
+    const direction = side === 'buy' ? TradeDirection.QuoteToBase : TradeDirection.BaseToQuote
+    const feeMode = getFeeMode(snap.config.collectFeeMode, direction, false)
+    const feeDecimals = feeMode.feesOnBaseToken ? snap.config.tokenDecimal : quoteDecimals
+    const outDecimals = side === 'buy' ? snap.config.tokenDecimal : quoteDecimals
+    return {
+        out: new Decimal(result.outputAmount.toString()).div(new Decimal(10).pow(outDecimals)).toNumber(),
+        fee: new Decimal(result.tradingFee.add(result.protocolFee).toString()).div(new Decimal(10).pow(feeDecimals)).toNumber(),
+        feeMint: (feeMode.feesOnBaseToken ? snap.pool.poolState.baseMint : snap.config.quoteMint).toBase58(),
+        feeDecimals,
+        partialFill: !result.amountLeft.isZero(),
+    }
 }
 
 /**

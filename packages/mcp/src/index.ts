@@ -38,6 +38,7 @@ import {
     PRESET_SCHEMA,
     requireQuoteAsset,
     quoteSwap,
+    formatSwapQuote,
     readQuoteMintDecimals,
     ScenarioResult,
     SCENARIOS,
@@ -263,13 +264,8 @@ tool(
         const snap = await loadPool(connection, new PublicKey(pool))
         const q = requireQuoteAsset(network, snap.config.quoteMint)
         const inDec = side === 'buy' ? q.decimals : snap.config.tokenDecimal
-        const outDec = side === 'buy' ? snap.config.tokenDecimal : q.decimals
         const r = quoteSwap(snap, side, new BN(new Decimal(amount).mul(new Decimal(10).pow(inDec)).floor().toFixed()), await chainTime(connection))
-        return {
-            out: new Decimal(r.outputAmount.toString()).div(new Decimal(10).pow(outDec)).toNumber(),
-            fee: new Decimal(r.tradingFee.add(r.protocolFee).toString()).div(new Decimal(10).pow(side === 'buy' ? q.decimals : q.decimals)).toNumber(),
-            partialFill: !r.amountLeft.isZero(),
-        }
+        return formatSwapQuote(snap, side, r, q.decimals)
     }
 )
 

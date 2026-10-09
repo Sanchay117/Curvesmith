@@ -6,8 +6,8 @@
  * Checks the simulator's graduation predictions against what the programs actually did.
  */
 import { describe, expect, test } from 'vitest'
-import { Keypair, LAMPORTS_PER_SOL } from '@solana/web3.js'
-import { NATIVE_MINT } from '@solana/spl-token'
+import { Keypair, LAMPORTS_PER_SOL, Transaction } from '@solana/web3.js'
+import { createAssociatedTokenAccountIdempotentInstruction, getAssociatedTokenAddressSync, NATIVE_MINT } from '@solana/spl-token'
 import BN from 'bn.js'
 import {
     createDammV2Program,
@@ -127,7 +127,13 @@ describe('lifecycle on real programs', () => {
         const diff = deposited.sub(predicted.quoteToPool).abs()
         expect(diff.muln(10_000).div(predicted.quoteToPool).toNumber()).toBeLessThanOrEqual(1)
 
-        // 5. author claims curve trading fees
+        // 5. author claims a positive amount. Pre-create the base ATA and use a separate
+        // transaction fee payer so the author's SOL delta is exactly the claimed quote.
+        expect(migrated.partnerQuoteFee.gtn(0)).toBe(true)
+        const expectedClaim = BigInt(migrated.partnerQuoteFee.toString())
+        env.send(new Transaction().add(createAssociatedTokenAccountIdempotentInstruction(
+            author.publicKey, getAssociatedTokenAddressSync(baseMint.publicKey, author.publicKey), author.publicKey, baseMint.publicKey,
+        )), [author])
         const claimTx = await client.partner.claimPartnerTradingFee({
             pool: poolAddr,
             feeClaimer: author.publicKey,
@@ -136,9 +142,10 @@ describe('lifecycle on real programs', () => {
             maxQuoteAmount: migrated.partnerQuoteFee,
         })
         const before = env.svm.getBalance(author.publicKey)!
-        env.send(claimTx, [author])
+        claimTx.feePayer = cranker.publicKey
+        env.send(claimTx, [cranker, author])
         const after = env.svm.getBalance(author.publicKey)!
-        expect(after > before - 20_000n).toBe(true)
+        expect(after - before).toBe(expectedClaim)
         const claimed = (await client.state.getPool(poolAddr))!.poolState
         expect(claimed.partnerQuoteFee.isZero()).toBe(true)
     })
