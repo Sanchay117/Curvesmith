@@ -10,4 +10,4 @@ npx launchproof-dbc verify-census <report.json> --cache <archive-directory>
 
 The default cluster is devnet. `audit` and `census` only read RPC data; `publish`, `launch`, `buy`, `sell`, `graduate`, and `claim` require an explicitly funded signer. Run `npx launchproof-dbc --help` for options. Config review is not a safety certificate. See the repository's `docs/CENSUS.md` for the census method.
 
-Build locally with `pnpm --filter launchproof-dbc build`. When ready, the maintainer can publish with `cd packages/cli && npm publish --access public`; this repository does not publish automatically.
+Source, web app and census report: https://github.com/Sanchay117/Launchproof

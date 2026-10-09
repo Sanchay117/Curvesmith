@@ -4,13 +4,15 @@
 
 Launchproof is a configuration review and launch toolkit for Meteora's Dynamic Bonding Curve. It turns on-chain permissions into readable terms: who can mint, who can withdraw liquidity, how supply is allocated, and which asset a launch actually raises.
 
-[App](https://sanchay117.github.io/Launchproof/) · [State of DBC](https://sanchay117.github.io/Launchproof/#/report) · [Methodology](docs/CENSUS.md) · [Developer guide](docs/GUIDE.md)
+[Demo video](https://youtu.be/2bWgUqSgf-U) · [App](https://sanchay117.github.io/Launchproof/) · [State of DBC](https://sanchay117.github.io/Launchproof/#/report) · [Methodology](docs/CENSUS.md) · [Developer guide](docs/GUIDE.md)
+
+[![Launchproof demo video, 2 minutes](https://img.youtube.com/vi/2bWgUqSgf-U/maxresdefault.jpg)](https://youtu.be/2bWgUqSgf-U)
 
 ## Start with evidence
 
 The **State of DBC** report scans existing standard mainnet DBC pool accounts, ranks their configs by observed pool count, and reviews the most-used configs. The page shows its observation window, audit coverage, account types excluded from scope, and any evaluation failures. Download its JSON and source account archive to inspect the results.
 
-A **configuration audit** reads a config directly without a wallet or registry listing. It reports fee splits, LP vesting, token type, receiver addresses, and migration terms, and supports custom quote mints without mislabeling them SOL. Download an audit receipt containing the account bytes, SHA-256 hash, slot, and review results; reproduce it offline with the CLI. Policy-1 receipts remain verifiable after the policy-2 expansion.
+A **configuration audit** reads a config directly without a wallet or registry listing. It reports fee splits, LP vesting, token type, receiver addresses, and migration terms, and supports custom quote mints without mislabeling them SOL. Download an audit receipt containing the account bytes, SHA-256 hash, slot, and review results; reproduce it offline with the CLI. Policy-1 receipts remain verifiable after the policy-2 expansion. The same audit runs from a terminal with `npx launchproof-dbc -n mainnet-beta audit <config-address>`.
 
 A migration flag is a state transition, not evidence of demand, unique users, volume, or misconduct. These checks describe configured permissions and economic terms, not issuer trustworthiness or investment safety. See the [scope and reproducibility limits](docs/CENSUS.md).
 
@@ -55,7 +57,7 @@ pnpm cli inspect fair-meme
 
 `census` defaults to devnet like the rest of the CLI; explicitly select `-n mainnet-beta` for the mainnet report. Supply `-u <rpc-url>` before the command if the public endpoint limits scans. The raw archive stays local in `.cache/`; the compact report and selected account evidence ship in `apps/web/public/`.
 
-The standalone CLI can be built with `pnpm --filter launchproof-dbc build` and checked with `node packages/cli/dist/index.mjs --help`. After the maintainer publishes it, `npx launchproof-dbc audit <config-address>` runs the read-only audit.
+The CLI is on npm as [`launchproof-dbc`](https://www.npmjs.com/package/launchproof-dbc), so `npx launchproof-dbc -n mainnet-beta audit <config-address>` runs the read-only audit without cloning the repository (Node.js 22 or newer). Build it from source with `pnpm --filter launchproof-dbc build` and check it with `node packages/cli/dist/index.mjs --help`.
 
 ## Try the lifecycle on devnet
 
