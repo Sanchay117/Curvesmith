@@ -184,11 +184,31 @@ async function fetchParsed(connection: Connection, sigs: string[]): Promise<(Par
 }
 
 export async function fetchListings(connection: Connection, opts: { max?: number } = {}): Promise<Listing[]> {
+    return (await readRegistry(connection, opts)).listings
+}
+
+/**
+ * Registry changes after `until`, an earlier registry signature (e.g. the newest one in a shipped
+ * snapshot): new or updated listings, plus the `config:author` keys delisted since. Reading only
+ * the delta keeps a page load to a handful of RPC calls instead of one per listing.
+ */
+export async function fetchRegistryDelta(connection: Connection, until: string): Promise<{ listings: Listing[]; delisted: string[] }> {
+    return readRegistry(connection, { until })
+}
+
+/** Applies a registry delta on top of a base set of listings (e.g. a snapshot); newest first. */
+export function mergeListings(base: Listing[], delta: { listings: Listing[]; delisted: string[] }): Listing[] {
+    const keyOf = (l: Listing) => `${l.config.toBase58()}:${l.author.toBase58()}`
+    const changed = new Set([...delta.listings.map(keyOf), ...delta.delisted])
+    return [...delta.listings, ...base.filter((l) => !changed.has(keyOf(l)))]
+}
+
+async function readRegistry(connection: Connection, opts: { max?: number; until?: string }): Promise<{ listings: Listing[]; delisted: string[] }> {
     const max = opts.max ?? 1000
     const sigs: ConfirmedSignatureInfo[] = []
     let before: string | undefined
     while (sigs.length < max) {
-        const page = await connection.getSignaturesForAddress(REGISTRY_ADDRESS, { before, limit: Math.min(1000, max - sigs.length) })
+        const page = await connection.getSignaturesForAddress(REGISTRY_ADDRESS, { before, until: opts.until, limit: Math.min(1000, max - sigs.length) })
         sigs.push(...page)
         if (page.length < 1000) break
         before = page[page.length - 1].signature
@@ -214,8 +234,9 @@ export async function fetchListings(connection: Connection, opts: { max?: number
         if (!latest.has(key)) latest.set(key, { meta, author, signature: tx.transaction.signatures[0], blockTime: tx.blockTime ?? null })
     }
 
+    const delisted = [...latest.entries()].filter(([, l]) => l.meta.x).map(([key]) => key)
     const candidates = [...latest.values()].filter((l) => !l.meta.x)
-    if (candidates.length === 0) return []
+    if (candidates.length === 0) return { listings: [], delisted }
     const { program } = createDbcProgram(connection)
     const accounts: (Awaited<ReturnType<Connection['getMultipleAccountsInfo']>>[number])[] = []
     for (let i = 0; i < candidates.length; i += 100) {
@@ -245,7 +266,7 @@ export async function fetchListings(connection: Connection, opts: { max?: number
             poolConfig,
         })
     })
-    return listings
+    return { listings, delisted }
 }
 
 // ---------------------------------------------------------------------------------------

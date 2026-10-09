@@ -28,8 +28,9 @@ function Solana({ children }: { children: React.ReactNode }) {
     // Wallet Standard auto-detects installed wallets (Phantom, Solflare, Backpack...); the only
     // explicit adapter is a devnet burner so the app can be tried without any extension.
     const wallets = useMemo(() => (network === 'devnet' ? [new DevnetBurnerWalletAdapter()] : []), [network])
+    // web3.js would retry 429s on its own; withRetry and React Query already back off, and stacking both multiplies a burst
     return (
-        <ConnectionProvider endpoint={rpcUrl} config={{ commitment: 'confirmed' }}>
+        <ConnectionProvider endpoint={rpcUrl} config={{ commitment: 'confirmed', disableRetryOnRateLimit: true }}>
             <WalletProvider wallets={wallets} autoConnect>
                 <WalletModalProvider>{children}</WalletModalProvider>
             </WalletProvider>

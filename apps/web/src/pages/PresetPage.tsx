@@ -166,7 +166,7 @@ export function PresetPage() {
     const { network, setNetwork } = useNetwork()
     const { connection } = useConnection()
     const { listing, isLoading } = useListing(config)
-    const stats = usePresetStats(listing)
+    const stats = usePresetStats(listing, { live: true })
 
     // Not in the registry? Read the raw config so any launchpad's DBC config can be inspected.
     const raw = useQuery({

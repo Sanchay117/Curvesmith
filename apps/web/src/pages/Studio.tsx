@@ -103,7 +103,8 @@ export function Studio() {
 function StudioEditor({ imported }: { imported?: ConfigImport }) {
     const [params, setParams] = useSearchParams()
     const { network } = useNetwork()
-    const listings = useListings()
+    // the registry is only needed to fork a listed preset (?fork=); skip the scan otherwise
+    const listings = useListings({ enabled: !!params.get('fork') })
     const toast = useToast()
 
     const [spec, setSpec] = useState<PresetSpec>(() => {

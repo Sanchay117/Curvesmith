@@ -7,6 +7,8 @@ import {
     evaluateConfig,
     evaluatePreset,
     fetchListings,
+    fetchRegistryDelta,
+    mergeListings,
     fetchTokenMetas,
     Listing,
     listingsFromSnapshot,
@@ -27,8 +29,12 @@ import { useNetwork } from './network'
  * Pages paint from it immediately while live chain reads catch up: stale-while-revalidate.
  */
 export function useSnapshot(): RegistrySnapshot | null {
+    return useSnapshotQuery().data ?? null
+}
+
+function useSnapshotQuery() {
     const { network } = useNetwork()
-    const q = useQuery({
+    return useQuery({
         queryKey: ['snapshot', network],
         queryFn: async () => {
             const res = await fetch(`./registry-${network}.json`)
@@ -39,44 +45,6 @@ export function useSnapshot(): RegistrySnapshot | null {
         staleTime: Infinity,
         retry: false,
     })
-    return q.data ?? null
-}
-
-export function useListings() {
-    const { connection } = useConnection()
-    const { network, rpcUrl } = useNetwork()
-    const snapshot = useSnapshot()
-    const placeholder = useMemo(() => (snapshot ? listingsFromSnapshot(snapshot, connection) : undefined), [snapshot, connection])
-    return useQuery({
-        queryKey: ['listings', network, rpcUrl],
-        queryFn: async () => {
-            try {
-                return await withRetry(() => fetchListings(connection), 4)
-            } catch (e) {
-                // a throttled RPC should degrade to the snapshot, not to an error page
-                if (placeholder) return placeholder
-                throw e
-            }
-        },
-        staleTime: 60_000,
-        placeholderData: placeholder,
-    })
-}
-
-export function useListing(config: string | undefined) {
-    const listings = useListings()
-    const listing = useMemo(
-        () => listings.data?.find((l) => l.config.toBase58() === config),
-        [listings.data, config]
-    )
-    // The snapshot placeholder can predate a preset (e.g. one published minutes ago), so a miss in
-    // it is not final: keep loading until the live registry read has ruled the config out.
-    const pending = !listing && listings.isPlaceholderData && listings.isFetching
-    return { ...listings, listing, isLoading: listings.isLoading || pending }
-}
-
-export function specOfListing(l: Listing, network: 'devnet' | 'mainnet-beta'): PresetSpec {
-    return specFromConfig(l.poolConfig, network, l.meta)
 }
 
 /** Runs at most `n` tasks at once; public RPCs answer bursts of program scans with 429s. */
@@ -102,7 +70,56 @@ function limiter(n: number) {
             next()
         })
 }
-const scan = limiter(2)
+// Registry scans and preset stats are the heavy reads (getTransaction batches, getProgramAccounts):
+// one at a time keeps a fresh page load under the public RPC's burst limit.
+const heavy = limiter(1)
+
+export function useListings({ enabled = true }: { enabled?: boolean } = {}) {
+    const { connection } = useConnection()
+    const { network, rpcUrl } = useNetwork()
+    const snapshotQuery = useSnapshotQuery()
+    const snapshot = snapshotQuery.data ?? null
+    const placeholder = useMemo(() => (snapshot ? listingsFromSnapshot(snapshot, connection) : undefined), [snapshot, connection])
+    return useQuery({
+        queryKey: ['listings', network, rpcUrl],
+        queryFn: async () => {
+            try {
+                // with a snapshot, read only registry entries newer than its newest listing (usually
+                // none or a few) and merge them in; without one, read the whole registry
+                const newest = snapshot?.listings.reduce((a, b) => ((b.blockTime ?? 0) > (a.blockTime ?? 0) ? b : a), snapshot.listings[0])
+                if (placeholder && newest) {
+                    const delta = await heavy(() => withRetry(() => fetchRegistryDelta(connection, newest.signature), 4))
+                    return mergeListings(placeholder, delta)
+                }
+                return await heavy(() => withRetry(() => fetchListings(connection), 4))
+            } catch (e) {
+                // a throttled RPC should degrade to the snapshot, not to an error page
+                if (placeholder) return placeholder
+                throw e
+            }
+        },
+        // wait for the shipped snapshot (a static file, fast) so the read can be incremental
+        enabled: enabled && !snapshotQuery.isPending,
+        staleTime: 5 * 60_000,
+        placeholderData: placeholder,
+    })
+}
+
+export function useListing(config: string | undefined) {
+    const listings = useListings()
+    const listing = useMemo(
+        () => listings.data?.find((l) => l.config.toBase58() === config),
+        [listings.data, config]
+    )
+    // The snapshot placeholder can predate a preset (e.g. one published minutes ago), so a miss in
+    // it is not final: keep loading until the live registry read has ruled the config out.
+    const pending = !listing && listings.isPlaceholderData && listings.isFetching
+    return { ...listings, listing, isLoading: listings.isLoading || pending }
+}
+
+export function specOfListing(l: Listing, network: 'devnet' | 'mainnet-beta'): PresetSpec {
+    return specFromConfig(l.poolConfig, network, l.meta)
+}
 
 /**
  * One definition of the stats query so cards, totals and Earnings share a cache entry.
@@ -115,7 +132,7 @@ export function statsQuery(connection: Connection, network: Network, rpcUrl: str
         queryKey: ['stats', network, rpcUrl, key],
         queryFn: async () => {
             try {
-                return await scan(() =>
+                return await heavy(() =>
                     withRetry(() => presetStats(connection, l.config, l.poolConfig, specOfListing(l, network).quote === 'SOL' ? 9 : 6), 4)
                 )
             } catch (e) {
@@ -123,19 +140,23 @@ export function statsQuery(connection: Connection, network: Network, rpcUrl: str
                 throw e
             }
         },
-        staleTime: 30_000,
-        placeholderData: cached,
+        // Snapshot stats count as fresh data from the moment the snapshot was written, so cards
+        // only rescan the chain (getProgramAccounts, the most throttled call) once it is hours old.
+        staleTime: 3 * 60 * 60_000,
+        initialData: cached,
+        initialDataUpdatedAt: cached && snapshot ? snapshot.generatedAt * 1000 : undefined,
     }
 }
 
-export function usePresetStats(l: Listing | undefined) {
+/** `live` keeps polling (a preset's own page); cards and totals read once per staleTime. */
+export function usePresetStats(l: Listing | undefined, { live = false }: { live?: boolean } = {}) {
     const { connection } = useConnection()
     const { network, rpcUrl } = useNetwork()
     const snapshot = useSnapshot()
     return useQuery({
         ...(l ? statsQuery(connection, network, rpcUrl, l, snapshot) : { queryKey: ['stats', 'none'], queryFn: async () => null }),
         enabled: !!l,
-        refetchInterval: 60_000,
+        refetchInterval: live ? 60_000 : false,
     })
 }
 

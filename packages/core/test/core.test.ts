@@ -12,7 +12,9 @@ import {
     LIBRARY,
     lintPreset,
     listingInstructions,
+    Listing,
     listingMetaFromSpec,
+    mergeListings,
     planCurve,
     PresetSpec,
     quoteDecimals,
@@ -97,6 +99,22 @@ describe('registry (CSR-1)', () => {
         expect(REGISTRY_ADDRESS.toBuffer().equals(expected)).toBe(true)
         expect(toHex(sha256(new Uint8Array()))).toBe(createHash('sha256').update('').digest('hex'))
         expect(REGISTRY_ADDRESS.toBase58()).toBe('3cjzSdeXvwoke4238hghUi6dzo7cNhousyR19mNjzsBR')
+    })
+
+    test('a registry delta updates, adds and delists on top of a snapshot', () => {
+        const author = Keypair.generate().publicKey
+        const make = (name: string, config = Keypair.generate().publicKey) =>
+            ({ config, author, signature: name, blockTime: null, meta: listingMetaFromSpec(config, { ...LIBRARY['fair-meme'], name }) }) as unknown as Listing
+        const kept = make('kept')
+        const updatedOld = make('old')
+        const removed = make('removed')
+        const updatedNew = make('new', updatedOld.config)
+        const added = make('added')
+        const merged = mergeListings([kept, updatedOld, removed], {
+            listings: [updatedNew, added],
+            delisted: [`${removed.config.toBase58()}:${author.toBase58()}`],
+        })
+        expect(merged.map((l) => l.signature)).toEqual(['new', 'added', 'kept'])
     })
 
     test('listing memo round-trips', () => {
