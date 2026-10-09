@@ -14,8 +14,8 @@
     "build": "pnpm --filter @launchproof/web build",
     "test": "pnpm --filter @launchproof/core test",
     "typecheck": "pnpm -r typecheck",
-    "cli": "pnpm --filter launchproof exec node --import tsx src/index.ts",
-    "snapshot": "pnpm --filter launchproof exec node --import tsx src/index.ts snapshot",
+    "cli": "pnpm --filter launchproof-dbc exec node --import tsx src/index.ts",
+    "snapshot": "pnpm --filter launchproof-dbc exec node --import tsx src/index.ts snapshot",
     "mcp": "pnpm --filter @launchproof/mcp exec node --import tsx src/index.ts"
   },
   "devDependencies": {

@@ -2,11 +2,11 @@
 
 ## Project Structure & Module Organization
 
-Launchproof audits Meteora DBC configs with a census, Studio, CLI, and MCP server. Core and MCP use `@launchproof/*`; the CLI is `launchproof`.
+Launchproof audits Meteora DBC configs with a census, Studio, CLI, and MCP server. Core and MCP use `@launchproof/*`; the npm CLI is `launchproof-dbc` (binary `launchproof`).
 
 - `apps/web/src/` contains React pages and components; `apps/web/public/` holds static assets and the published census.
 - `packages/core/src/` owns audit policy, curve math, simulation, registry logic, and transaction builders.
-- `packages/cli/src/` and `packages/mcp/src/` expose the core. Build the npm CLI with `pnpm --filter launchproof build`.
+- `packages/cli/src/` and `packages/mcp/src/` expose the core. Build the npm CLI with `pnpm --filter launchproof-dbc build`.
 - `packages/core/test/` holds Vitest, LiteSVM, and differential tests; `fixtures/` holds program binaries and account snapshots.
 
 ## Build, Test, and Development Commands

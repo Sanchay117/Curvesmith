@@ -55,7 +55,7 @@ pnpm cli inspect fair-meme
 
 `census` defaults to devnet like the rest of the CLI; explicitly select `-n mainnet-beta` for the mainnet report. Supply `-u <rpc-url>` before the command if the public endpoint limits scans. The raw archive stays local in `.cache/`; the compact report and selected account evidence ship in `apps/web/public/`.
 
-The standalone CLI can be built with `pnpm --filter launchproof build` and checked with `node packages/cli/dist/index.mjs --help`. After the maintainer publishes it, `npx launchproof audit <config-address>` runs the read-only audit.
+The standalone CLI can be built with `pnpm --filter launchproof-dbc build` and checked with `node packages/cli/dist/index.mjs --help`. After the maintainer publishes it, `npx launchproof-dbc audit <config-address>` runs the read-only audit.
 
 ## Try the lifecycle on devnet
 
