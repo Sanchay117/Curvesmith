@@ -102,8 +102,8 @@ export function Audit() {
                     {/* the two numbers that matter most, then the rest */}
                     <div className="mt-4 grid gap-4 sm:grid-cols-2">
                         {[
-                            { label: 'of graduated liquidity can be pulled on day one', value: audit.unlockedLiquidityPct / 100, warn: audit.unlockedLiquidityPct > 50 },
-                            { label: 'of supply left to one wallet after graduation', value: audit.leftoverSupplyPct / 100, warn: audit.leftoverSupplyPct > 5 },
+                            { label: 'of migrated LP initially unlocked', value: audit.unlockedLiquidityPct / 100, warn: audit.unlockedLiquidityPct > 50 },
+                            { label: 'configured residual-supply estimate for the leftover receiver', value: audit.leftoverSupplyPct / 100, warn: audit.leftoverSupplyPct > 5 },
                         ].map((m, n) => (
                             <Reveal key={m.label} delay={n * 120}>
                                 <Card className="flex items-center gap-5">
@@ -216,7 +216,7 @@ export function Audit() {
                     </details>
 
                     <div className="mt-8 flex flex-wrap gap-3">
-                        <Link to="/studio">
+                        <Link to={`/studio?forkConfig=${encodeURIComponent(address)}${network === 'devnet' ? '&forkNetwork=devnet' : ''}`}>
                             <Button variant="primary">Design a better config</Button>
                         </Link>
                         <Link to="/market">

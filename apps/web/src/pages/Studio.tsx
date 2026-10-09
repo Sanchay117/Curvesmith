@@ -1,8 +1,13 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import BN from 'bn.js'
+import { useQuery } from '@tanstack/react-query'
+import { Connection, PublicKey } from '@solana/web3.js'
+import { createDbcProgram, PoolConfig } from '@meteora-ag/dynamic-bonding-curve-sdk'
 import {
     auditConfig,
+    DBC_PROGRAM_ID,
+    studioSpecFromConfig,
     clonePreset,
     defaultPreset,
     Evaluation,
@@ -17,7 +22,7 @@ import {
 import { Controls } from '../components/studio/Controls'
 import { PublishPanel } from '../components/studio/PublishPanel'
 import { CurveChart, EconomicsGrid, FeeChart, LintPanel, LiquidityBar, Panel, SimulationPanel, SupplyBar } from '../components/PresetViews'
-import { Button, Card, cx, GradeBadge, Segmented, Select, SeverityIcon } from '../components/ui'
+import { Button, Card, cx, Empty, GradeBadge, Segmented, Select, SeverityIcon, Skeleton } from '../components/ui'
 import { templateEvaluation } from '../lib/evaluations'
 import { useListings } from '../lib/queries'
 import { useNetwork } from '../lib/network'
@@ -61,13 +66,48 @@ function toJson(x: unknown): string {
     )
 }
 
+type ConfigImport = ReturnType<typeof studioSpecFromConfig> & { address: string; network: 'mainnet-beta' | 'devnet'; slot: number }
+
 export function Studio() {
+    const [params] = useSearchParams()
+    const settings = useNetwork()
+    const address = params.get('forkConfig')
+    const network = params.get('forkNetwork') === 'devnet' ? 'devnet' : 'mainnet-beta'
+    const rpc = settings.network === network ? settings.rpcUrl : network === 'devnet'
+        ? import.meta.env.VITE_RPC_DEVNET || 'https://api.devnet.solana.com'
+        : import.meta.env.VITE_RPC_MAINNET || 'https://solana-rpc.publicnode.com'
+    const imported = useQuery({
+        queryKey: ['studioConfig', network, rpc, address],
+        enabled: !!address,
+        retry: false,
+        staleTime: Infinity,
+        queryFn: async (): Promise<ConfigImport> => {
+            const connection = new Connection(rpc, { commitment: 'finalized', disableRetryOnRateLimit: true })
+            const account = await connection.getAccountInfoAndContext(new PublicKey(address!), 'finalized')
+            if (!account.value || !account.value.owner.equals(DBC_PROGRAM_ID)) throw new Error('No DBC-owned config at this address.')
+            const { program } = createDbcProgram(connection)
+            const config = program.coder.accounts.decode('poolConfig', account.value.data) as PoolConfig
+            return { ...studioSpecFromConfig(config, network, address!), address: address!, network, slot: account.context.slot }
+        },
+    })
+    if (!address) return <StudioEditor />
+    if (imported.isPending) return <div role="status"><p className="mb-4 text-sm text-ink-2">Reading config into Studio...</p><Skeleton className="h-64" /></div>
+    if (imported.isError || !imported.data) return <Empty title="This config could not be imported">
+        <p>{imported.error?.message ?? 'The config read returned no result.'}</p>
+        <p className="mt-2">Studio imports SOL/USDC quotes, time-based fees and DAMM v2 migration.</p>
+        <div className="mt-4 flex justify-center gap-3"><Button onClick={() => imported.refetch()}>Retry read</Button><Link to={`/audit/${address}${network === 'devnet' ? '?network=devnet' : ''}`}><Button>Return to audit</Button></Link></div>
+    </Empty>
+    return <StudioEditor key={`${network}:${address}`} imported={imported.data} />
+}
+
+function StudioEditor({ imported }: { imported?: ConfigImport }) {
     const [params, setParams] = useSearchParams()
     const { network } = useNetwork()
     const listings = useListings()
     const toast = useToast()
 
     const [spec, setSpec] = useState<PresetSpec>(() => {
+        if (imported) return imported.spec
         const s = params.get('s')
         const t = params.get('template')
         if (s) return decodeSpec(s) ?? defaultPreset()
@@ -192,6 +232,11 @@ export function Studio() {
 
     return (
         <div>
+            {imported && <div role="status"><Card className="mb-6 border-accent/30">
+                <h2 className="font-semibold">Imported config draft</h2>
+                <p className="mt-1 text-sm text-ink-2">Read from {imported.network} at slot {imported.slot}. This is an editable redesign; publishing follows your selected network ({network}).</p>
+                <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-ink-2">{imported.notices.map((notice) => <li key={notice}>{notice}</li>)}</ul>
+            </Card></div>}
             <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-semibold tracking-tight">Studio</h1>
