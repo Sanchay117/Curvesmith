@@ -151,7 +151,7 @@ function ConfigTable({ rows }: { rows: CensusRow[] }) {
                         <option value="all">All findings</option>
                         <option value="unlocked-lp">Majority LP unlocked</option>
                         <option value="leftover-supply">Residual supply &gt;5%</option>
-                        <option value="mint-authority">Mint authority retained</option>
+                        <option value="mint-authority">Legacy mint-authority mode</option>
                         <option value="no-time-decay">No time decay</option>
                         <option value="custom-quote">Custom quote mint</option>
                     </select>
@@ -238,8 +238,8 @@ const SIGNALS = [
         test: (r: CensusRow) => r.audit!.leftoverSupplyPct > 5,
     },
     {
-        title: 'let someone mint more tokens later',
-        tip: 'The config keeps a mint authority, so new supply can be issued after launch.',
+        title: 'use a legacy mint-authority config mode',
+        tip: 'This config flag alone does not establish the actual base mint authority. The observations below inspect one sample pool per flagged config.',
         color: 'var(--s4)',
         test: (r: CensusRow) => r.audit!.mintAuthorityRetained === true,
     },
@@ -373,6 +373,9 @@ export function Report() {
                             <p className="mt-2 text-sm text-ink-2">
                                 Among {count(majorityUnlockedPools)} reviewed pools with majority LP initially unlocked, the creator side has the larger unlocked share in {count(creatorDominantPools)} ({percent(creatorDominantPools, majorityUnlockedPools)}), and the partner/launchpad side in {count(partnerDominantPools)} ({percent(partnerDominantPools, majorityUnlockedPools)}). Ties make up the remainder. For unmigrated pools, these terms would apply at migration.
                             </p>
+                            {data.mintAuthorities && <p className="mt-2 text-sm text-ink-2">
+                                Of {data.mintAuthorities.top.flaggedConfigs} flagged top configs, one base mint was checked per config: {data.mintAuthorities.top.set} still have a mint authority, {data.mintAuthorities.top.revoked} have it revoked, and {data.mintAuthorities.top.unavailable} were unavailable. An observed authority can authorize additional issuance; these samples do not establish the state of every pool using the config. The single-pool tail sample has {data.mintAuthorities.tail.set} set, {data.mintAuthorities.tail.revoked} revoked, and {data.mintAuthorities.tail.unavailable} unavailable among {data.mintAuthorities.tail.flaggedConfigs} flagged configs.
+                            </p>}
                         </Reveal>
                     </section>
 

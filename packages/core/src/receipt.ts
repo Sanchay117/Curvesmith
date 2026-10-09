@@ -1,7 +1,7 @@
 import { Connection, PublicKey } from '@solana/web3.js'
 import { createDbcProgram, PoolConfig } from '@meteora-ag/dynamic-bonding-curve-sdk'
 import { unpackMint, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from '@solana/spl-token'
-import { auditConfig, auditConfigV1, AUDIT_POLICY, AUDIT_POLICY_V1, ConfigAudit, ConfigAuditV1 } from './audit'
+import { auditConfig, auditConfigV1, AUDIT_POLICY, AUDIT_POLICY_V1, ConfigAudit, ConfigAuditV1, preserveRecordedMintWording } from './audit'
 import { Network } from './constants'
 import { sha256, toHex } from './hash'
 
@@ -44,6 +44,7 @@ export function verifyAuditReceipt(receipt: AuditReceipt | LegacyAuditReceipt): 
         delete (reproduced as Partial<ConfigAudit>).partnerUnlockedLiquidityPct
         delete (reproduced as Partial<ConfigAudit>).creatorUnlockedLiquidityPct
     }
+    preserveRecordedMintWording(reproduced, receipt.audit)
     if (JSON.stringify(reproduced) !== JSON.stringify(receipt.audit)) throw new Error('Audit findings do not reproduce under the recorded policy')
     return reproduced
 }

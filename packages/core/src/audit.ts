@@ -1,6 +1,6 @@
 import BN from 'bn.js'
 import Decimal from 'decimal.js'
-import { Connection, PublicKey } from '@solana/web3.js'
+import { AccountInfo, Connection, PublicKey } from '@solana/web3.js'
 import { unpackMint, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from '@solana/spl-token'
 import { PoolConfig } from '@meteora-ag/dynamic-bonding-curve-sdk'
 import { Network, quoteAssetByMint } from './constants'
@@ -118,6 +118,22 @@ export function auditConfigV1(config: PoolConfig, network: Network, mintDecimals
     }
 }
 
+/** Decode an observed token mint, never infer live authority from a config enum. */
+export function readMintAuthority(mint: PublicKey, account: AccountInfo<Buffer>): string | null {
+    if (!account.owner.equals(TOKEN_PROGRAM_ID) && !account.owner.equals(TOKEN_2022_PROGRAM_ID)) throw new Error('Invalid mint owner')
+    return unpackMint(mint, account, account.owner).mintAuthority?.toBase58() ?? null
+}
+
+/** Preserve only the exact historical wording in existing policy-2 receipts. The predicate and severity are unchanged. */
+export function preserveRecordedMintWording(reproduced: ConfigAudit | ConfigAuditV1, recorded: ConfigAudit | ConfigAuditV1): void {
+    const old = recorded.findings.find((finding) => finding.id === 'mint-authority')
+    const current = reproduced.findings.find((finding) => finding.id === 'mint-authority')
+    if (current && old?.title === 'Mint authority is retained' && old.detail === 'The config permits additional issuance. This may be intentional for redeemable or externally backed assets.') {
+        current.title = old.title
+        current.detail = old.detail
+    }
+}
+
 /** Policy 2 exposes payment destinations and migration terms, with explicit limits on interpretation. */
 export function auditConfig(config: PoolConfig, network: Network, mintDecimals?: number): ConfigAudit {
     const previous = auditConfigV1(config, network, mintDecimals)
@@ -132,7 +148,11 @@ export function auditConfig(config: PoolConfig, network: Network, mintDecimals?:
     const postMigrationPoolFeeBps = config.migrationOption !== 1 ? null
         : config.migrationFeeOption === 6 ? config.migratedPoolFeeBps : fixedPoolFees[config.migrationFeeOption] ?? null
     const sameReceiver = config.leftoverReceiver.equals(config.feeClaimer)
-    const findings = [...previous.findings]
+    const findings = previous.findings.map((finding) => finding.id === 'mint-authority' ? {
+        ...finding,
+        title: 'Config permits a retained mint authority (legacy mode)',
+        detail: 'This legacy standard-config flag does not establish the live token mint authority. DBC 0.2.0 rejects these modes for new non-hook configs and pools. Inspect each existing base mint before claiming additional issuance is possible.',
+    } : finding)
     if (previous.openingFeeBps >= 3000) findings.push({
         id: 'high-opening-fee', severity: 'warning', title: `${(previous.openingFeeBps / 100).toFixed(1)}% opening fee`,
         detail: previous.timeFeeDecay ? 'The configured opening fee is high, but the time scheduler decays it. Check the duration and settled rate before trading.' : 'The configured opening fee is high. This review found no active time decay; inspect the fee mode before trading.',

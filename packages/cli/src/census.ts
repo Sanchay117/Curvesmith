@@ -7,12 +7,13 @@ import { Connection, PublicKey } from '@solana/web3.js'
 import { unpackMint, TOKEN_2022_PROGRAM_ID, TOKEN_PROGRAM_ID } from '@solana/spl-token'
 import { createDbcProgram, PoolConfig, VirtualPool } from '@meteora-ag/dynamic-bonding-curve-sdk'
 import {
+    readMintAuthority, preserveRecordedMintWording, MintAuthorityObservation,
     auditConfig, auditConfigV1, AUDIT_POLICY_V1, CensusReport, CensusRow, countPoolObservations, DBC_PROGRAM_ID,
     Network, POOL_CONFIG_OFFSET, POOL_MIGRATED_OFFSET, readPoolCensusFields, VIRTUAL_POOL_DISCRIMINATOR,
 } from '@launchproof/core'
 
 type RpcAccount = { owner: string; data: [string, 'base64']; executable: boolean; lamports: number }
-type RpcResult<T> = { context: { slot: number }; value: T }
+type RpcResult<T> = { context: { slot: number }; value: T; fetchedAt: string }
 type PoolRecord = { pubkey: string; account: RpcAccount }
 const hash = (data: Uint8Array) => createHash('sha256').update(data).digest('hex')
 const require = createRequire(import.meta.url)
@@ -73,6 +74,47 @@ function summarizeOperators(rows: CensusRow[], records: PoolRecord[]): NonNullab
     return { matchedConfigs, matchedPools, distinctFeeClaimers: operators.size, top }
 }
 
+type MintEvidence = {
+    config: string
+    samplePool: string
+    scope: 'top' | 'tail'
+    pool: { account: RpcAccount | null; slot: number; fetchedAt: string }
+    mint?: { address: string; account: RpcAccount | null; slot: number; fetchedAt: string }
+}
+
+function mintObservation(entry: MintEvidence, program: ReturnType<typeof createDbcProgram>['program']): MintAuthorityObservation {
+    const observation: MintAuthorityObservation = {
+        samplePool: entry.samplePool, baseMint: null, status: 'unavailable', mintAuthority: null,
+        poolSlot: entry.pool.slot, observedAt: entry.mint?.fetchedAt ?? entry.pool.fetchedAt,
+        ...(entry.mint ? { mintSlot: entry.mint.slot } : {}),
+    }
+    try {
+        if (!Number.isSafeInteger(entry.pool.slot) || !Number.isFinite(Date.parse(entry.pool.fetchedAt)) || (entry.mint && (!Number.isSafeInteger(entry.mint.slot) || !Number.isFinite(Date.parse(entry.mint.fetchedAt))))) throw new Error('Invalid mint observation metadata')
+        if (!entry.pool.account || entry.pool.account.owner !== DBC_PROGRAM_ID.toBase58()) throw new Error('Sample pool missing or invalid owner')
+        const pool = program.coder.accounts.decode('virtualPool', Buffer.from(entry.pool.account.data[0], 'base64')) as VirtualPool
+        if (pool.poolState.config.toBase58() !== entry.config) throw new Error('Sample pool config differs')
+        observation.baseMint = pool.poolState.baseMint.toBase58()
+        if (!entry.mint?.account) throw new Error('Base mint unavailable')
+        if (entry.mint.address !== observation.baseMint) throw new Error('Sample base mint differs')
+        const account = entry.mint.account
+        observation.mintAuthority = readMintAuthority(pool.poolState.baseMint, {
+            ...account, owner: new PublicKey(account.owner), data: Buffer.from(account.data[0], 'base64'),
+        })
+        observation.status = observation.mintAuthority === null ? 'revoked' : 'set'
+    } catch (error) { observation.error = (error as Error).message }
+    return observation
+}
+
+function mintSummary(rows: CensusRow[]) {
+    const flagged = rows.filter((row) => row.audit?.mintAuthorityRetained)
+    return {
+        flaggedConfigs: flagged.length,
+        set: flagged.filter((row) => row.mintObservation?.status === 'set').length,
+        revoked: flagged.filter((row) => row.mintObservation?.status === 'revoked').length,
+        unavailable: flagged.filter((row) => !row.mintObservation || row.mintObservation.status === 'unavailable').length,
+    }
+}
+
 export interface CensusOptions { out: string; cache: string; limit: number; tailSample: number; resume?: boolean; offline?: boolean }
 
 export async function buildCensus(rpcUrl: string, network: Network, options: CensusOptions) {
@@ -126,6 +168,7 @@ export async function buildCensus(rpcUrl: string, network: Network, options: Cen
         const result = saved.result as RpcResult<T>
         if (!Number.isInteger(result.context?.slot) || !Array.isArray(result.value)) throw new Error(`Invalid RPC response: ${name}`)
         if (method === 'getMultipleAccounts' && result.value.length !== (params[0] as string[]).length) throw new Error(`Incomplete batch: ${name}`)
+        result.fetchedAt = saved.fetchedAt
         slots.push(result.context.slot)
         return result
     }
@@ -258,6 +301,25 @@ export async function buildCensus(rpcUrl: string, network: Network, options: Cen
         try { row.audit = auditConfig(config, network, decimals.get(config.quoteMint.toBase58())) }
         catch (error) { tailEntries.find((entry) => entry.address === row.address)!.error = (error as Error).message }
     }
+    const mintObservations: MintEvidence[] = []
+    for (const scope of ['top', 'tail'] as const) {
+        const flagged = (scope === 'top' ? top : tail).filter((row) => row.audit?.mintAuthorityRetained)
+        for (let i = 0; i < flagged.length; i += 100) {
+            const selected = flagged.slice(i, i + 100)
+            const pools = await request<Array<RpcAccount | null>>(`authority-${scope}-pools-${i}`, 'getMultipleAccounts', [selected.map((row) => row.samplePool), { encoding: 'base64', commitment: 'finalized' }])
+            const entries: MintEvidence[] = selected.map((row, j) => ({ config: row.address, samplePool: row.samplePool, scope, pool: { account: pools.value[j], slot: pools.context.slot, fetchedAt: pools.fetchedAt } }))
+            const mintKeys = [...new Set(entries.map((entry) => mintObservation(entry, program).baseMint).filter((mint): mint is string => mint !== null))]
+            if (mintKeys.length) {
+                const accounts = await request<Array<RpcAccount | null>>(`authority-${scope}-mints-${i}`, 'getMultipleAccounts', [mintKeys, { encoding: 'base64', commitment: 'finalized' }])
+                for (const entry of entries) {
+                    const key = mintObservation(entry, program).baseMint
+                    if (key) entry.mint = { address: key, account: accounts.value[mintKeys.indexOf(key)], slot: accounts.context.slot, fetchedAt: accounts.fetchedAt }
+                }
+            }
+            entries.forEach((entry, j) => { selected[j].mintObservation = mintObservation(entry, program) })
+            mintObservations.push(...entries)
+        }
+    }
     const tailReviewed = tail.filter((row) => row.audit)
     const audited = top.filter((r) => r.audit)
     const report: CensusReport = {
@@ -267,6 +329,7 @@ export async function buildCensus(rpcUrl: string, network: Network, options: Cen
         duplicateObservations: duplicates, auditedConfigs: audited.length, auditedPools: audited.reduce((n, r) => n + r.pools, 0),
         failures: top.length - audited.length, validation: { checked, mismatches: 0 }, evidence, rows: top,
         operators,
+        mintAuthorities: { top: mintSummary(top), tail: mintSummary(tail) },
         tail: {
             populationConfigs: singletons.length, populationPools: singletons.length,
             sampleSize: tail.length, evaluated: tailReviewed.length, failures: tail.length - tailReviewed.length,
@@ -275,7 +338,7 @@ export async function buildCensus(rpcUrl: string, network: Network, options: Cen
     }
     fs.mkdirSync(path.dirname(options.out), { recursive: true })
     const publicEvidence = options.out.replace(/\.json$/, '') + '-evidence.json.gz'
-    fs.writeFileSync(publicEvidence, gzipSync(JSON.stringify({ schema: 'launchproof/census-evidence@1', configs, samples, mints: mintEvidence, tail: tailEntries })))
+    fs.writeFileSync(publicEvidence, gzipSync(JSON.stringify({ schema: 'launchproof/census-evidence@1', configs, samples, mints: mintEvidence, tail: tailEntries, mintObservations })))
     report.evidence.push({ file: path.basename(publicEvidence), sha256: hash(fs.readFileSync(publicEvidence)) })
     fs.writeFileSync(`${options.out}.tmp`, JSON.stringify(report))
     fs.renameSync(`${options.out}.tmp`, options.out)
@@ -294,6 +357,7 @@ export function verifyCensus(reportPath: string, cachePath?: string) {
     const evidence = JSON.parse(gunzipSync(packed).toString()) as {
         configs: Array<{ address: string; data: string }>; samples: Array<{ address: string; data: string }>;
         mints: Array<{ address: string; data: string; owner: string }>;
+        mintObservations?: MintEvidence[];
         tail?: Array<{ address: string; data?: string; slot?: number; error?: string }>;
     }
     const { program } = createDbcProgram(new Connection('http://localhost:8899'))
@@ -320,6 +384,7 @@ export function verifyCensus(reportPath: string, cachePath?: string) {
             delete (reproduced as Partial<typeof reproduced>).partnerUnlockedLiquidityPct
             delete (reproduced as Partial<typeof reproduced>).creatorUnlockedLiquidityPct
         }
+        preserveRecordedMintWording(reproduced, row.audit)
         if (JSON.stringify(reproduced) !== JSON.stringify(row.audit)) throw new Error(`Review mismatch ${row.address}`)
         verified++
     }
@@ -329,6 +394,22 @@ export function verifyCensus(reportPath: string, cachePath?: string) {
         const fields = readPoolCensusFields(bytes)
         if (fields.config !== decoded.poolState.config.toBase58() || fields.migrated !== (decoded.poolState.isMigrated === 1)) throw new Error('Sample decoding mismatch')
     }
+    const observed = evidence.mintObservations ?? []
+    if (new Set(observed.map((entry) => `${entry.scope}:${entry.config}`)).size !== observed.length) throw new Error('Duplicate mint observation')
+    function verifyMintRows(rows: CensusRow[], scope: 'top' | 'tail') {
+        const flagged = rows.filter((row) => row.audit?.mintAuthorityRetained)
+        if (observed.filter((entry) => entry.scope === scope).length !== flagged.length) throw new Error('Mint observation count differs')
+        for (const row of flagged) {
+            const entry = observed.find((entry) => entry.config === row.address && entry.scope === scope)
+            if (!entry) throw new Error(`Missing mint evidence ${row.address}`)
+            if (row.samplePool && row.samplePool !== entry.samplePool) throw new Error('Sample pool differs')
+            const reproduced = mintObservation(entry, program)
+            if (scope === 'top' && JSON.stringify(reproduced) !== JSON.stringify(row.mintObservation)) throw new Error('Mint observation differs')
+            row.mintObservation = reproduced
+        }
+        if (JSON.stringify(mintSummary(rows)) !== JSON.stringify(report.mintAuthorities?.[scope])) throw new Error('Mint authority summary differs')
+    }
+    if (report.mintAuthorities) verifyMintRows(report.rows, 'top')
     if (report.tail) {
         if (!evidence.tail || evidence.tail.length !== report.tail.sampleSize) throw new Error('Tail sample evidence count differs')
         const addresses = evidence.tail.map((entry) => entry.address)
@@ -358,6 +439,7 @@ export function verifyCensus(reportPath: string, cachePath?: string) {
                 if (!entry.error) throw new Error(`Unexpected tail review failure ${entry.address}`)
             }
         }
+        if (report.mintAuthorities) verifyMintRows(reviews, 'tail')
         if (reviews.length !== report.tail.evaluated || report.tail.failures !== report.tail.sampleSize - reviews.length) throw new Error('Tail review counts differ')
         if (JSON.stringify(tailFindings(reviews)) !== JSON.stringify(report.tail.findings)) throw new Error('Tail finding estimates differ')
     }

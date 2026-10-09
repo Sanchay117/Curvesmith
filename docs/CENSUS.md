@@ -14,7 +14,11 @@ The report describes **observed existing standard VirtualPool accounts**, not ev
 6. For the single-pool stratum, rank each config by SHA-256 of `launchproof-single-pool-v1:<address>` and select the first 3,000. This seeded hash ranking makes a reproducible uniform sample without relying on the RPC's account order. Fetch full config accounts in batches of 100, review them with the same policy, and record failures. Finding shares divide by successfully evaluated sampled configs. Two-sided 95% Wilson score intervals express sampling uncertainty only; failed reads, RPC omissions, and the account observation window can add bias. These are estimates for the single-pool stratum, not for all configs or all pools.
 7. Scan PoolConfig accounts once with the account discriminator and `dataSlice` offset 40, length 64. The first 32 bytes are `feeClaimer`; the next 32 are `leftoverReceiver`. Join addresses to the observed config counts. The resulting operator count is the number of distinct fee-claimer **addresses among matched configs**, not a count of people or named launchpads. The raw 42 MB compressed operator scan remains in the local cache; `verify-census --cache` checks its hash and recomputes the grouped counts.
 
+8. For every legacy mint-authority flag in the top configs and tail sample, fetch its recorded sample pool and base mint. Store pool/config linkage, mint owner and bytes, slots, fetch times, and whether mint authority is set, revoked, or unavailable. One sampled mint per config does not establish the state of its other pools. `verify-census` reproduces the observations from raw evidence. This adds later observations to the original census window.
+
 Two scans plus validation and config reads can take several minutes and download hundreds of MB. Full raw RPC responses are gzipped, hashed, and cached locally. `--resume` reuses completed requests and may extend the observation window; `--offline` performs no network requests and requires a complete archive. Use a fresh cache directory for a new census. The CLI verifies saved requests against the requested parameters.
+
+The 2026-10-09 mint observations found authorities set on 27 of 31 sampled top-config mints and revoked on 4. Among 20 flagged single-pool tail configs, 18 were set and 2 revoked. All 51 reads succeeded. These counts are sampled mints, not pool-weighted estimates; the legacy top flags cover 6,455 observed pools. The predicates and severities remain policy 2, with corrected explanatory text. Exact older receipt wording still verifies.
 
 ## Review policy: `launchproof/config-review@2`
 
@@ -22,7 +26,7 @@ Two scans plus validation and config reads can take several minutes and download
 | --- | --- | --- |
 | Initially unlocked LP | Partner + creator unlocked shares >50% | A majority can be withdrawn after migration; no withdrawal is inferred. The report also shows each side separately. For unmigrated pools these are future configured terms. |
 | Residual supply | Estimated receiver allocation >5%; >50% is critical | Initial supply minus curve sale, migration allocation, vesting, and configured migration burn. Dynamic-supply buffers are burned, not assigned to a receiver. Actual balances and fees can differ. |
-| Mint authority | Config authority mode 3 or 4 | Additional issuance is permitted; it can be legitimate for externally backed assets. |
+| Legacy mint-authority mode | Config authority mode 3 or 4 | Deprecated for standard configs in DBC 0.2.0. The config flag does not prove that an existing token mint still has an authority. |
 | Migration fee | Configured fee >10% | Quote is allocated as a fee before liquidity is deposited. |
 | Time decay | Supported time scheduler with nonzero periods, interval, and reduction | No time decay is informational. Rate limiters and other fee modes are classified separately. |
 | Custom quote | Mint is not recognized SOL/USDC | Keep identity and precision explicit; raw units when precision is unresolved. |

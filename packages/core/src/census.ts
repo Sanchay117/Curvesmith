@@ -13,6 +13,17 @@ export function readPoolCensusFields(data: Uint8Array): { config: string; migrat
     return { config: new PublicKey(data.subarray(POOL_CONFIG_OFFSET, POOL_CONFIG_OFFSET + 32)).toBase58(), migrated: flag === 1 }
 }
 
+export interface MintAuthorityObservation {
+    samplePool: string
+    baseMint: string | null
+    status: 'set' | 'revoked' | 'unavailable'
+    mintAuthority: string | null
+    poolSlot: number
+    mintSlot?: number
+    observedAt: string
+    error?: string
+}
+
 export interface CensusRow {
     address: string
     pools: number
@@ -21,6 +32,7 @@ export interface CensusRow {
     audit?: ConfigAudit
     error?: string
     configHash?: string
+    mintObservation?: MintAuthorityObservation
 }
 
 export interface CensusReport {
@@ -42,6 +54,10 @@ export interface CensusReport {
     auditedPools: number
     failures: number
     validation: { checked: number; mismatches: number }
+    mintAuthorities?: {
+        top: { flaggedConfigs: number; set: number; revoked: number; unavailable: number }
+        tail: { flaggedConfigs: number; set: number; revoked: number; unavailable: number }
+    }
     operators?: {
         matchedConfigs: number
         matchedPools: number

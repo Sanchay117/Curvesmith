@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs'
 import { Connection, PublicKey } from '@solana/web3.js'
 import { createDbcProgram, PoolConfig } from '@meteora-ag/dynamic-bonding-curve-sdk'
 import BN from 'bn.js'
-import { analyzePreset, auditConfig, compilePreset, countPoolObservations, defaultPreset, deriveConfigState, lintPreset, QUOTE_ASSETS, readPoolCensusFields, residualSupply, specFromConfig } from '../src'
+import { MintLayout, TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token'
+import { analyzePreset, auditConfig, readMintAuthority, compilePreset, countPoolObservations, defaultPreset, deriveConfigState, lintPreset, QUOTE_ASSETS, readPoolCensusFields, residualSupply, specFromConfig } from '../src'
 
 function config() {
     return deriveConfigState(compilePreset(defaultPreset()).params, {
@@ -38,6 +39,10 @@ describe('configuration audit', () => {
         expect(has(c, 'mint-authority')).toBeUndefined()
         c.tokenUpdateAuthority = 3
         expect(has(c, 'mint-authority')?.severity).toBe('warning')
+        expect(has(c, 'mint-authority')?.title).toContain('legacy mode')
+        expect(has(c, 'mint-authority')?.detail).toContain('does not establish')
+        c.tokenUpdateAuthority = 4
+        expect(has(c, 'mint-authority')?.title).toContain('legacy mode')
     })
     test('uses strict 5% and 50% residual supply thresholds', () => {
         expect(has(fixedResidual(500), 'leftover-supply')).toBeUndefined()
@@ -177,5 +182,20 @@ describe('census accounting', () => {
         const bytes = new Uint8Array(424)
         bytes[305] = 2
         expect(() => readPoolCensusFields(bytes)).toThrow('Unexpected migration flag')
+    })
+})
+
+describe('observed mint authority', () => {
+    test('distinguishes set and revoked authorities for both token programs', () => {
+        const data = Buffer.alloc(MintLayout.span)
+        const authority = new PublicKey('11111111111111111111111111111112')
+        for (const owner of [TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID]) {
+            for (const retained of [false, true]) {
+                MintLayout.encode({ mintAuthorityOption: retained ? 1 : 0, mintAuthority: authority, supply: 1n, decimals: 6, isInitialized: true, freezeAuthorityOption: 0, freezeAuthority: PublicKey.default }, data)
+                expect(readMintAuthority(PublicKey.default, { owner, data, lamports: 1, executable: false })).toBe(retained ? authority.toBase58() : null)
+            }
+        }
+        expect(() => readMintAuthority(PublicKey.default, { owner: PublicKey.default, data, lamports: 1, executable: false })).toThrow('Invalid mint owner')
+        expect(() => readMintAuthority(PublicKey.default, { owner: TOKEN_PROGRAM_ID, data: Buffer.alloc(0), lamports: 1, executable: false })).toThrow()
     })
 })
